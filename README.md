@@ -1,36 +1,130 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Store Courier
 
-## Getting Started
+Система управления доставкой товаров, построенная на Next.js 15, TypeScript, Tailwind CSS и Prisma ORM с PostgreSQL.
 
-First, run the development server:
+## 🚀 Технологии
+
+- **Next.js 15** - React фреймворк с App Router
+- **TypeScript** - типизированный JavaScript
+- **Tailwind CSS** - utility-first CSS фреймворк
+- **Prisma ORM** - современный ORM для TypeScript
+- **PostgreSQL** - реляционная база данных
+
+## 📋 Возможности
+
+- 👥 **Управление пользователями** - система ролей (админы, продавцы, курьеры)
+- 🛍️ **Каталог товаров** - категории, характеристики, изображения
+- 📦 **Система заказов** - отслеживание статусов доставки
+- 🎨 **Современный UI** - компоненты на Tailwind CSS
+- 🔧 **Type Safety** - полная типизация с TypeScript
+
+## 🛠️ Установка и настройка
+
+### 1. Клонирование и установка зависимостей
+
+```bash
+# Зависимости уже установлены
+npm install
+```
+
+### 2. Настройка базы данных
+
+1. Скопируйте файл окружения:
+```bash
+copy .env.example .env
+```
+
+2. Отредактируйте `.env` файл и укажите ваш DATABASE_URL:
+```env
+DATABASE_URL="postgresql://username:password@localhost:5432/store_courier_db?schema=public"
+```
+
+3. Примените схему к базе данных:
+```bash
+npm run db:push
+```
+
+### 3. Генерация Prisma Client
+
+```bash
+npm run db:generate
+```
+
+### 4. Запуск приложения
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Приложение будет доступно по адресу [http://localhost:3000](http://localhost:3000)
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## 🗄️ Схема базы данных
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+### Основные модели:
 
-## Learn More
+- **User** - пользователи с ролями (ADMIN, COURIER, SELLER)
+- **Category** - категории товаров с поддержкой иерархии
+- **Product** - товары с характеристиками, размерами и цветами
+- **Order** - заказы со статусами доставки
+- **Review** - отзывы о товарах
 
-To learn more about Next.js, take a look at the following resources:
+### Связи:
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+- Пользователи могут быть продавцами (связь с товарами) или курьерами (связь с заказами)
+- Товары принадлежат категориям и имеют продавцов
+- Заказы содержат позиции товаров и могут быть назначены курьерам
+- Отзывы привязаны к товарам
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## 📚 Доступные команды
 
-## Deploy on Vercel
+```bash
+# Разработка
+npm run dev          # Запуск в режиме разработки
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+# База данных
+npm run db:generate  # Генерация Prisma Client
+npm run db:push      # Применение схемы к БД без миграций
+npm run db:migrate   # Создание и применение миграций
+npm run db:studio    # Запуск Prisma Studio (GUI для БД)
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+# Сборка
+npm run build        # Сборка для продакшена
+npm run start        # Запуск продакшен сборки
+npm run lint         # Проверка кода ESLint
+```
+
+## 🧪 Тестирование подключения
+
+После настройки DATABASE_URL, посетите [http://localhost:3000/api/test](http://localhost:3000/api/test) для проверки подключения к базе данных.
+
+## 📁 Структура проекта
+
+```
+src/
+├── app/
+│   ├── api/          # API роуты
+│   ├── globals.css   # Глобальные стили
+│   ├── layout.tsx    # Главный layout
+│   └── page.tsx      # Главная страница
+├── components/
+│   └── ui/           # UI компоненты
+├── lib/
+│   ├── prisma.ts     # Prisma Client
+│   └── utils.ts      # Утилиты
+└── types/
+    └── index.ts      # TypeScript типы
+prisma/
+└── schema.prisma     # Схема базы данных
+```
+
+## 🔄 Следующие шаги
+
+1. Настройте подключение к PostgreSQL
+2. Примените схему: `npm run db:push`
+3. Создайте API роуты для CRUD операций
+4. Добавьте страницы для управления товарами, заказами и пользователями
+5. Реализуйте авторизацию и аутентификацию
+
+## 🤝 Вклад в проект
+
+Проект готов для дальнейшей разработки. Основа заложена, Prisma настроен, все зависимости установлены.
