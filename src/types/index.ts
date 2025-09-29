@@ -54,6 +54,11 @@ export interface ProductWithDetails extends Product {
 }
 
 export interface OrderWithDetails extends Order {
-  courier?: User
-  orderItems: (OrderItem & { product: Product })[]
+  courier?: User | null
+  orderItems: (OrderItem & { 
+    product: Product & { 
+      category: Category
+      seller: User 
+    } 
+  })[]
 }
