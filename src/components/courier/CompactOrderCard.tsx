@@ -105,15 +105,17 @@ export function CompactOrderCard({ order, onClick }: CompactOrderCardProps) {
         </p>
       </div>
 
-      {/* Информация о клиенте */}
-      <div className="mb-1.5">
-        <p className="font-medium text-sm truncate" style={{ color: 'var(--foreground)' }}>
-          {order.customerName}
-        </p>
-        <p className="text-xs truncate" style={{ color: 'var(--muted)' }}>
-          {order.customerPhone}
-        </p>
-      </div>
+      {/* Информация о клиенте - показываем только для принятых заказов */}
+      {order.status !== 'COURIER_WAIT' && (
+        <div className="mb-1.5">
+          <p className="font-medium text-sm truncate" style={{ color: 'var(--foreground)' }}>
+            {order.customerName}
+          </p>
+          <p className="text-xs truncate" style={{ color: 'var(--muted)' }}>
+            {order.customerPhone}
+          </p>
+        </div>
+      )}
 
       {/* Адрес доставки */}
       <div className="mb-2">

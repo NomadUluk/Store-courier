@@ -60,7 +60,7 @@ const translations = {
     'canceledOrdersHere': 'Отмененные заказы будут отображаться здесь',
     'updateOrders': 'Обновить заказы',
     'updating': 'Обновление...',
-    'autoUpdate': 'автообновление каждые 5 сек',
+  
     'showAllCompleted': 'Показать все завершенные заказы',
     
     // Статусы заказов
@@ -130,7 +130,6 @@ const translations = {
     'female': 'Женский',
     'other': 'Другой',
     'gender': 'Пол',
-    'noCompletedOrders': 'Завершенных заказов пока нет',
     'completedOrdersHere': 'Завершенные заказы будут отображаться здесь',
     'cancelOrder': 'Отменить заказ',
     'confirmCancelOrder': 'Подтверждение отмены заказа',
@@ -197,7 +196,6 @@ const translations = {
     'canceledOrdersHere': 'Жокко чыгарылган буйрутмалар бул жерде көрсөтүлөт',
     'updateOrders': 'Буйрутмаларды жаңыртуу',
     'updating': 'Жаңыртууда...',
-    'autoUpdate': 'ар 5 секундада автожаңыртуу',
     'showAllCompleted': 'Бардык аяктаган буйрутмаларды көрсөтүү',
     
     // Статусы заказов
@@ -267,7 +265,6 @@ const translations = {
     'female': 'Аял',
     'other': 'Башка',
     'gender': 'Жынысы',
-    'noCompletedOrders': 'Аяктаган буйрутмалар азырча жок',
     'completedOrdersHere': 'Аяктаган буйрутмалар бул жерде көрсөтүлөт',
     'cancelOrder': 'Буйрутманы жокко чыгаруу',
     'confirmCancelOrder': 'Буйрутманы жокко чыгарууну ырастоо',

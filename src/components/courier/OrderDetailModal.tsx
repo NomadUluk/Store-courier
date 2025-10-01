@@ -177,7 +177,7 @@ export function OrderDetailModal({
             <div className="flex items-center justify-between">
               <div>
                 <h2 className="text-lg font-semibold" style={{ color: 'var(--foreground)' }}>
-                  #{order.id.slice(-6)}
+                  #{order.id.slice(-8)}
                 </h2>
                 {getStatusBadge(order.status)}
               </div>
@@ -195,22 +195,34 @@ export function OrderDetailModal({
           {/* Content */}
           <div className="p-4 space-y-3">
             
-            {/* Информация о клиенте */}
-            <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <span className="text-sm font-medium" style={{ color: 'var(--foreground)' }}>{order.customerName}</span>
-                <a 
-                  href={`tel:${order.customerPhone}`} 
-                  className="text-blue-600 text-sm font-medium"
-                >
-                  {order.customerPhone}
-                </a>
+            {/* Информация о клиенте - показываем только для принятых заказов */}
+            {order.status !== 'COURIER_WAIT' && (
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-medium" style={{ color: 'var(--foreground)' }}>{order.customerName}</span>
+                  <a 
+                    href={`tel:${order.customerPhone}`} 
+                    className="text-blue-600 text-sm font-medium"
+                  >
+                    {order.customerPhone}
+                  </a>
+                </div>
+                <p className="text-sm text-gray-600">{order.deliveryAddress}</p>
+                {order.customerComment && (
+                  <p className="text-sm text-gray-500 italic">"{order.customerComment}"</p>
+                )}
               </div>
-              <p className="text-sm text-gray-600">{order.deliveryAddress}</p>
-              {order.customerComment && (
-                <p className="text-sm text-gray-500 italic">"{order.customerComment}"</p>
-              )}
-            </div>
+            )}
+            
+            {/* Адрес доставки для доступных заказов */}
+            {order.status === 'COURIER_WAIT' && (
+              <div className="space-y-2">
+                <p className="text-sm text-gray-600">{order.deliveryAddress}</p>
+                {order.customerComment && (
+                  <p className="text-sm text-gray-500 italic">"{order.customerComment}"</p>
+                )}
+              </div>
+            )}
 
             {/* Товары в заказе */}
             <div className="border border-gray-200 rounded-lg p-3">

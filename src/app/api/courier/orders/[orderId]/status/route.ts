@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { verifyToken } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
+import { sendOrderStatusUpdateNotification, sendNewOrderNotification } from '@/lib/telegram'
 import type { ApiResponse } from '@/types'
 import type { OrderStatus } from '@prisma/client'
 
@@ -92,6 +93,19 @@ export async function PATCH(request: NextRequest, context: RouteParams) {
         }
       }
     })
+
+    // Отправляем уведомление в Telegram об изменении статуса
+    try {
+      // Если статус изменился на COURIER_WAIT, отправляем уведомление о новом заказе
+      if (status === 'COURIER_WAIT' && existingOrder.status !== 'COURIER_WAIT') {
+        await sendNewOrderNotification(updatedOrder)
+      } else {
+        await sendOrderStatusUpdateNotification(updatedOrder, existingOrder.status)
+      }
+    } catch (error) {
+      console.error('Ошибка отправки Telegram уведомления:', error)
+      // Не прерываем выполнение, если уведомление не отправилось
+    }
 
     return NextResponse.json<ApiResponse>({
       success: true,

@@ -5,7 +5,8 @@ import { useLanguage } from '@/contexts/LanguageContext'
 import { 
   UserIcon, 
   KeyIcon, 
-  ChevronRightIcon
+  ChevronRightIcon,
+  ChatBubbleLeftRightIcon
 } from '@heroicons/react/24/outline'
 
 interface ProfileDropdownProps {
@@ -16,7 +17,7 @@ interface ProfileDropdownProps {
 
 export function ProfileDropdown({ isOpen, onClose, anchorRef }: ProfileDropdownProps) {
   const { t } = useLanguage()
-  const [activeView, setActiveView] = useState<'main' | 'profile' | 'password' | 'phone'>('main')
+  const [activeView, setActiveView] = useState<'main' | 'profile' | 'password' | 'phone' | 'telegram'>('main')
   const [name, setName] = useState('')
   const [phone, setPhone] = useState('')
   const [currentPassword, setCurrentPassword] = useState('')
@@ -25,6 +26,7 @@ export function ProfileDropdown({ isOpen, onClose, anchorRef }: ProfileDropdownP
   const [newPhone, setNewPhone] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
+  const [isTestingTelegram, setIsTestingTelegram] = useState(false)
   const dropdownRef = useRef<HTMLDivElement>(null)
 
   // Загрузка данных профиля
@@ -143,6 +145,32 @@ export function ProfileDropdown({ isOpen, onClose, anchorRef }: ProfileDropdownP
     onClose()
   }
 
+  const testTelegramBot = async () => {
+    setIsTestingTelegram(true)
+    try {
+      const response = await fetch('/api/test/telegram', {
+        method: 'POST'
+      })
+      
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`)
+      }
+      
+      const data = await response.json()
+      
+      if (data.success) {
+        alert('✅ Тестовое сообщение отправлено в Telegram!')
+      } else {
+        alert('❌ Ошибка отправки тестового сообщения: ' + data.error)
+      }
+    } catch (error) {
+      console.error('Ошибка тестирования бота:', error)
+      alert('❌ Ошибка тестирования бота')
+    } finally {
+      setIsTestingTelegram(false)
+    }
+  }
+
 
   return (
     <div 
@@ -219,6 +247,47 @@ export function ProfileDropdown({ isOpen, onClose, anchorRef }: ProfileDropdownP
                 <span style={{ color: 'var(--foreground)' }}>{t('changePassword') || 'Изменить пароль'}</span>
               </div>
               <ChevronRightIcon className="w-4 h-4" style={{ color: 'var(--muted)' }} />
+            </button>
+
+            <button
+              onClick={testTelegramBot}
+              disabled={isTestingTelegram}
+              className="w-full flex items-center justify-between p-3 hover:bg-gray-50 dark:hover:bg-gray-800 rounded-lg transition-colors disabled:opacity-50"
+            >
+              <div className="flex items-center space-x-3">
+                <ChatBubbleLeftRightIcon className="w-5 h-5" style={{ color: 'var(--muted)' }} />
+                <span style={{ color: 'var(--foreground)' }}>
+                  {isTestingTelegram ? 'Тестирование...' : '🤖 Тест Telegram бота'}
+                </span>
+              </div>
+            </button>
+
+            <button
+              onClick={async () => {
+                try {
+                  const response = await fetch('/api/telegram/notify-all-courier-wait', {
+                    method: 'POST'
+                  })
+                  
+                  if (response.ok) {
+                    alert('✅ Уведомления отправлены для всех заказов COURIER_WAIT!')
+                  } else {
+                    const data = await response.json()
+                    alert('❌ Ошибка: ' + (data.error || 'Неизвестная ошибка'))
+                  }
+                } catch (error) {
+                  console.error('Ошибка отправки уведомлений:', error)
+                  alert('❌ Ошибка отправки уведомлений')
+                }
+              }}
+              className="w-full flex items-center justify-between p-3 hover:bg-gray-50 dark:hover:bg-gray-800 rounded-lg transition-colors"
+            >
+              <div className="flex items-center space-x-3">
+                <ChatBubbleLeftRightIcon className="w-5 h-5" style={{ color: 'var(--muted)' }} />
+                <span style={{ color: 'var(--foreground)' }}>
+                  📢 Уведомить о всех заказах
+                </span>
+              </div>
             </button>
             </div>
           )}
