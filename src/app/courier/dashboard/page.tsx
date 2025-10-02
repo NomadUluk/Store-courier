@@ -244,6 +244,38 @@ export default function CourierDashboard() {
         if (selectedOrder?.id === orderId) {
           setSelectedOrder({ ...selectedOrder, ...data.data })
         }
+
+        // Закрываем модальное окно
+        setIsModalOpen(false)
+        setSelectedOrder(null)
+
+        // Переключаем на соответствующую вкладку в зависимости от статуса
+        const getTargetTab = (newStatus: OrderStatus): TabType => {
+          switch (newStatus) {
+            case 'COURIER_PICKED':
+            case 'ENROUTE':
+              return 'my' // Мои заказы
+            case 'DELIVERED':
+              return 'completed' // Завершенные
+            case 'CANCELED':
+              return 'canceled' // Отмененные
+            default:
+              return 'available' // Доступные
+          }
+        }
+
+        const targetTab = getTargetTab(status)
+        if (targetTab !== activeTab) {
+          setActiveTab(targetTab)
+          // Сбрасываем пагинацию для новой вкладки
+          setCurrentPage(prev => ({
+            ...prev,
+            [targetTab]: 1
+          }))
+        }
+
+        // Обновляем данные заказов для корректного отображения
+        await fetchOrders(false)
       } else {
         setError(data.error || t('error'))
       }
@@ -336,9 +368,18 @@ export default function CourierDashboard() {
   )
   
   // Мои заказы - те, что я принял в работу (только мои заказы)
-  const myOrders = orders.filter(order => 
-    order.courierId === currentCourierId && ['COURIER_PICKED', 'ENROUTE'].includes(order.status)
-  )
+  // Сортируем так, чтобы заказы "В пути" (ENROUTE) были в начале списка
+  const myOrders = orders
+    .filter(order => 
+      order.courierId === currentCourierId && ['COURIER_PICKED', 'ENROUTE'].includes(order.status)
+    )
+    .sort((a, b) => {
+      // Заказы "В пути" (ENROUTE) показываем первыми
+      if (a.status === 'ENROUTE' && b.status !== 'ENROUTE') return -1
+      if (b.status === 'ENROUTE' && a.status !== 'ENROUTE') return 1
+      // Для остальных заказов сортируем по дате создания (старые первыми)
+      return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+    })
   
   // Завершенные заказы - те, что я доставил (только мои заказы)
   const completedOrders = orders.filter(order => 
@@ -450,14 +491,14 @@ export default function CourierDashboard() {
   }
 
   return (
-    <div className="flex-1 w-full h-full px-4 py-6 overflow-y-auto" style={{ backgroundColor: 'var(--background)' }}>
-      <div className="space-y-4">
+    <div className="flex-1 w-full h-full px-4 py-3 overflow-y-auto" style={{ backgroundColor: 'var(--background)' }}>
+      <div className="space-y-3">
         {/* Заголовок и статистика */}
-        <div className="grid grid-cols-1 lg:grid-cols-6 gap-4 mb-4">
+        <div className="grid grid-cols-1 lg:grid-cols-6 gap-3 mb-3">
           {/* Заголовок */}
           <div className="lg:col-span-2">
-            <h1 className="text-3xl font-bold mb-2" style={{ color: 'var(--foreground)' }}>{t('courierPanel')}</h1>
-            <p className="text-lg" style={{ color: 'var(--muted)' }}>
+            <h1 className="text-xl font-bold mb-1" style={{ color: 'var(--foreground)' }}>{t('courierPanel')}</h1>
+            <p className="text-sm" style={{ color: 'var(--muted)' }}>
               {t('manageOrders')}
             </p>
             <div className="flex items-center space-x-2 mt-2">

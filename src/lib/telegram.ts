@@ -163,16 +163,83 @@ ${order.customerComment ? `💬 *Комментарий:* ${order.customerCommen
       return
     }
 
-    const message = `🔄 *Обновление заказа #${order.id.slice(-8)}*
+    // Определяем эмодзи для статуса
+    const getStatusEmoji = (status: string) => {
+      switch (status) {
+        case 'ENROUTE': return '🚚'
+        case 'DELIVERED': return '✅'
+        case 'CANCELED': return '❌'
+        default: return '🔄'
+      }
+    }
+
+    const statusEmoji = getStatusEmoji(order.status)
+    
+    let message = ''
+    
+    // Разные сообщения для разных статусов
+    if (order.status === 'ENROUTE') {
+      message = `🚚 *Заказ #${order.id.slice(-8)} в пути*
+
+📍 *Адрес:* ${order.deliveryAddress}
+👤 *Клиент:* ${order.customerName}
+📞 *Телефон:* ${order.customerPhone}
+
+${order.customerComment ? `💬 *Комментарий:* ${order.customerComment}` : ''}
+
+🚚 *Курьер:* ${order.courier ? order.courier.fullname : 'Не назначен'}`
+    } else if (order.status === 'DELIVERED') {
+      message = `✅ *Заказ #${order.id.slice(-8)} доставлен*
+
+📍 *Адрес:* ${order.deliveryAddress}
+👤 *Клиент:* ${order.customerName}
+
+🚚 *Курьер:* ${order.courier ? order.courier.fullname : 'Не назначен'}`
+    } else if (order.status === 'CANCELED') {
+      message = `❌ *Заказ #${order.id.slice(-8)} отменен*
+
+📍 *Адрес:* ${order.deliveryAddress}
+${order.cancelComment ? `💬 *Причина отмены:* ${order.cancelComment}` : ''}
+
+🚚 *Курьер:* ${order.courier ? order.courier.fullname : 'Не назначен'}`
+    } else {
+      // Обычное сообщение для других статусов
+      message = `🔄 *Обновление заказа #${order.id.slice(-8)}*
 
 Статус изменен: *${statusLabels[oldStatus as keyof typeof statusLabels]}* → *${statusLabels[order.status as keyof typeof statusLabels]}*
 
 📍 *Адрес:* ${order.deliveryAddress}
 
 ${order.courier ? `🚚 *Курьер:* ${order.courier.fullname}` : ''}`
+    }
+
+    // Создаем клавиатуру для активных заказов
+    let keyboard = null
+    if (order.status === 'ENROUTE') {
+      keyboard = {
+        inline_keyboard: [
+          [
+            {
+              text: '📦 Мои заказы',
+              url: 'https://google.com'
+            }
+          ]
+        ]
+      }
+    }
+
+    // Проверяем длину сообщения
+    if (keyboard && !checkMessageLength(message, keyboard)) {
+      console.warn('Telegram: Отправляем сообщение без кнопки из-за превышения лимита')
+      await bot.sendMessage(chatId, message, {
+        parse_mode: 'Markdown'
+      })
+      return
+    }
 
     await bot.sendMessage(chatId, message, {
-      parse_mode: 'Markdown'
+      parse_mode: 'Markdown',
+      reply_markup: keyboard
     })
 
     console.log('Telegram уведомление об обновлении статуса отправлено для заказа:', order.id)
