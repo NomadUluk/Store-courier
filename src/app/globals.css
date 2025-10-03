@@ -211,3 +211,41 @@ body {
 .btn-secondary:hover {
   border-color: var(--border-strong);
 }
+
+/* Кастомный скроллбар */
+.custom-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: #9ca3af var(--border);
+}
+
+.custom-scrollbar::-webkit-scrollbar {
+  width: 8px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: var(--border);
+  border-radius: 4px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: #9ca3af;
+  border-radius: 4px;
+  transition: background 0.2s ease;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: #6b7280;
+}
+
+/* Для темной темы */
+[data-theme="dark"] .custom-scrollbar::-webkit-scrollbar-track {
+  background: var(--border);
+}
+
+[data-theme="dark"] .custom-scrollbar::-webkit-scrollbar-thumb {
+  background: #6b7280;
+}
+
+[data-theme="dark"] .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: #4b5563;
+}

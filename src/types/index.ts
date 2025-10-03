@@ -61,4 +61,21 @@ export interface OrderWithDetails extends Order {
       seller: User 
     } 
   })[]
+  // Явно добавляем поля, которые могут отсутствовать в сгенерированном типе Order
+  adminComment?: string | null
+}
+
+// Расширяем тип Order для включения всех полей
+export interface ExtendedOrder extends Order {
+  adminComment?: string | null
+}
+
+export interface OrderWithDetailsExtended extends ExtendedOrder {
+  courier?: User | null
+  orderItems: (OrderItem & { 
+    product: Product & { 
+      category: Category
+      seller: User 
+    } 
+  })[]
 }

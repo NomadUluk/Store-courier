@@ -1,16 +1,12 @@
 import TelegramBot from 'node-telegram-bot-api'
 import type { OrderWithDetails } from '@/types'
+import { getCourierChatId, setCourierChatId } from '@/lib/settings'
+import { prisma } from '@/lib/prisma'
+import { getBot } from '@/lib/telegram-bot'
 
-// Инициализация бота с таймаутом
-const bot = new TelegramBot(process.env.TELEGRAM_BOT_TOKEN!, { 
-  polling: false,
-  request: {
-    timeout: 5000 // 5 секунд таймаут
-  }
-})
 
 // Функция для проверки длины сообщения
-function checkMessageLength(message: string, keyboard?: any): boolean {
+function checkMessageLength(message: string, keyboard?: object): boolean {
   const messageLength = message.length
   const keyboardLength = keyboard ? JSON.stringify(keyboard).length : 0
   const totalLength = messageLength + keyboardLength
@@ -27,14 +23,25 @@ function checkMessageLength(message: string, keyboard?: any): boolean {
   return true
 }
 
-// Функция для отправки уведомления о новом заказе
+// Функция для отправки уведомления о новом заказе всем курьерам
 export async function sendNewOrderNotification(order: OrderWithDetails) {
   try {
     console.log('Telegram: Начинаем отправку уведомления о новом заказе:', order.id)
-    const chatId = process.env.TELEGRAM_CHAT_ID!
     
-    console.log('Telegram: Chat ID:', chatId)
-    console.log('Telegram: Bot Token настроен:', !!process.env.TELEGRAM_BOT_TOKEN)
+    const bot = await getBot()
+    if (!bot) {
+      console.error('Telegram: Не удалось получить экземпляр бота')
+      return
+    }
+
+    // Получаем всех активных курьеров
+    const couriers = await prisma.user.findMany({
+      where: {
+        role: 'COURIER'
+      }
+    })
+
+    console.log('Telegram: Найдено курьеров:', couriers.length)
     
     // Формируем сообщение
     const message = `🆕 *Новый заказ!*
@@ -51,49 +58,69 @@ ${order.orderItems.map(item =>
   `• ${item.product.name} (${item.amount} шт.) - ${(Number(item.price) * item.amount).toFixed(2)} сом`
 ).join('\n')}`
 
-    console.log('Telegram: Отправляем сообщение...')
+    console.log('Telegram: Отправляем сообщение курьерам...')
     
     // Создаем клавиатуру
+    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
     const keyboard = {
       inline_keyboard: [
         [
           {
             text: '📋 Посмотреть заказ',
-            url: `https://google.com`
+            url: `${baseUrl}/courier/dashboard?order=${order.id}`
           }
         ]
       ]
     }
     
-    // Проверяем длину сообщения
-    if (!checkMessageLength(message, keyboard)) {
-      console.warn('Telegram: Отправляем сообщение без кнопки из-за превышения лимита')
-      const sendMessagePromise = bot.sendMessage(chatId, message, {
-        parse_mode: 'Markdown'
-      })
-      
-      const timeoutPromise = new Promise((_, reject) => {
-        setTimeout(() => reject(new Error('Telegram API timeout')), 10000)
-      })
-      
-      await Promise.race([sendMessagePromise, timeoutPromise])
-      return
-    }
-    
-    // Создаем Promise с таймаутом
-    const sendMessagePromise = bot.sendMessage(chatId, message, {
-      parse_mode: 'Markdown',
-      reply_markup: keyboard
-    })
-    
-    const timeoutPromise = new Promise((_, reject) => {
-      setTimeout(() => reject(new Error('Telegram API timeout')), 10000) // 10 секунд таймаут
-    })
-    
-    // Отправляем сообщение с таймаутом
-    await Promise.race([sendMessagePromise, timeoutPromise])
+    // Отправляем уведомления всем курьерам
+    let successCount = 0
+    let errorCount = 0
 
-    console.log('Telegram: Уведомление отправлено успешно для заказа:', order.id)
+    for (const courier of couriers) {
+      try {
+        const chatId = await getCourierChatId(courier.id)
+        if (!chatId) {
+          console.log(`Telegram: Chat ID не найден для курьера ${courier.fullname} (${courier.id})`)
+          continue
+        }
+
+        // Проверяем длину сообщения
+        if (!checkMessageLength(message, keyboard)) {
+          console.warn('Telegram: Отправляем сообщение без кнопки из-за превышения лимита')
+          const sendMessagePromise = bot.sendMessage(chatId, message, {
+            parse_mode: 'Markdown'
+          })
+          
+          const timeoutPromise = new Promise((_, reject) => {
+            setTimeout(() => reject(new Error('Telegram API timeout')), 10000)
+          })
+          
+          await Promise.race([sendMessagePromise, timeoutPromise])
+        } else {
+          // Создаем Promise с таймаутом
+          const sendMessagePromise = bot.sendMessage(chatId, message, {
+            parse_mode: 'Markdown',
+            reply_markup: keyboard
+          })
+          
+          const timeoutPromise = new Promise((_, reject) => {
+            setTimeout(() => reject(new Error('Telegram API timeout')), 10000)
+          })
+          
+          // Отправляем сообщение с таймаутом
+          await Promise.race([sendMessagePromise, timeoutPromise])
+        }
+
+        console.log(`Telegram: Уведомление отправлено курьеру ${courier.fullname}`)
+        successCount++
+      } catch (courierError) {
+        console.error(`Telegram: Ошибка отправки курьеру ${courier.fullname}:`, courierError)
+        errorCount++
+      }
+    }
+
+    console.log(`Telegram: Уведомление отправлено для заказа ${order.id}. Успешно: ${successCount}, Ошибок: ${errorCount}`)
   } catch (error) {
     console.error('Ошибка отправки Telegram уведомления:', error)
     
@@ -109,10 +136,26 @@ ${order.orderItems.map(item =>
   }
 }
 
-// Функция для отправки уведомления об изменении статуса заказа
+// Функция для отправки уведомления об изменении статуса заказа конкретному курьеру
 export async function sendOrderStatusUpdateNotification(order: OrderWithDetails, oldStatus: string) {
   try {
-    const chatId = process.env.TELEGRAM_CHAT_ID!
+    const bot = await getBot()
+    if (!bot) {
+      console.error('Telegram: Не удалось получить экземпляр бота')
+      return
+    }
+
+    // Если у заказа нет назначенного курьера, не отправляем уведомление
+    if (!order.courierId) {
+      console.log('Telegram: У заказа нет назначенного курьера, уведомление не отправляется')
+      return
+    }
+
+    const chatId = await getCourierChatId(order.courierId)
+    if (!chatId) {
+      console.log(`Telegram: Chat ID не найден для курьера ${order.courierId}`)
+      return
+    }
     
     const statusLabels = {
       'CREATED': 'Создан',
@@ -136,12 +179,13 @@ ${order.customerComment ? `💬 *Комментарий:* ${order.customerCommen
 🚚 *Курьер:* ${order.courier ? order.courier.fullname : 'Не назначен'}`
       
       // Создаем клавиатуру
+      const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
       const keyboard = {
         inline_keyboard: [
           [
             {
               text: '📦 Мои заказы',
-              url: 'https://google.com'
+              url: `${baseUrl}/courier/dashboard?tab=my`
             }
           ]
         ]
@@ -173,8 +217,6 @@ ${order.customerComment ? `💬 *Комментарий:* ${order.customerCommen
       }
     }
 
-    const statusEmoji = getStatusEmoji(order.status)
-    
     let message = ''
     
     // Разные сообщения для разных статусов
@@ -216,12 +258,13 @@ ${order.courier ? `🚚 *Курьер:* ${order.courier.fullname}` : ''}`
     // Создаем клавиатуру для активных заказов
     let keyboard = null
     if (order.status === 'ENROUTE') {
+      const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
       keyboard = {
         inline_keyboard: [
           [
             {
               text: '📦 Мои заказы',
-              url: 'https://google.com'
+              url: `${baseUrl}/courier/dashboard?tab=my`
             }
           ]
         ]
@@ -253,39 +296,141 @@ export async function testTelegramBot() {
   try {
     console.log('Telegram: Начинаем тестирование бота...')
     
-    // Проверяем наличие переменных окружения
-    if (!process.env.TELEGRAM_BOT_TOKEN) {
-      throw new Error('TELEGRAM_BOT_TOKEN не найден в переменных окружения')
-    }
-    
-    if (!process.env.TELEGRAM_CHAT_ID) {
-      throw new Error('TELEGRAM_CHAT_ID не найден в переменных окружения')
+    const bot = await getBot()
+    if (!bot) {
+      throw new Error('Не удалось получить экземпляр бота')
     }
 
-    const chatId = process.env.TELEGRAM_CHAT_ID
-    console.log('Telegram: Chat ID:', chatId)
-    console.log('Telegram: Bot Token настроен:', !!process.env.TELEGRAM_BOT_TOKEN)
-    
-    // Проверяем, что Chat ID является числом
-    if (isNaN(Number(chatId))) {
-      throw new Error('TELEGRAM_CHAT_ID должен быть числом. Получено: ' + chatId)
-    }
-
-    console.log('Telegram: Отправляем тестовое сообщение...')
-    
-    // Создаем Promise с таймаутом для тестового сообщения
-    const sendMessagePromise = bot.sendMessage(chatId, '🤖 Telegram бот работает! Уведомления о заказах активированы.')
-    
-    const timeoutPromise = new Promise((_, reject) => {
-      setTimeout(() => reject(new Error('Telegram API timeout')), 10000) // 10 секунд таймаут
+    // Получаем всех курьеров с chat_id
+    const couriers = await prisma.user.findMany({
+      where: {
+        role: 'COURIER'
+      }
     })
+
+    console.log('Telegram: Найдено курьеров:', couriers.length)
     
-    // Отправляем сообщение с таймаутом
-    await Promise.race([sendMessagePromise, timeoutPromise])
+    let successCount = 0
+    let errorCount = 0
+
+    for (const courier of couriers) {
+      try {
+        const chatId = await getCourierChatId(courier.id)
+        if (!chatId) {
+          console.log(`Telegram: Chat ID не найден для курьера ${courier.fullname}`)
+          continue
+        }
+
+        console.log(`Telegram: Отправляем тестовое сообщение курьеру ${courier.fullname}...`)
+        
+        // Создаем Promise с таймаутом для тестового сообщения
+        const sendMessagePromise = bot.sendMessage(chatId, `🤖 Привет, ${courier.fullname}! Telegram бот работает! Уведомления о заказах активированы.`)
+        
+        const timeoutPromise = new Promise((_, reject) => {
+          setTimeout(() => reject(new Error('Telegram API timeout')), 10000)
+        })
+        
+        // Отправляем сообщение с таймаутом
+        await Promise.race([sendMessagePromise, timeoutPromise])
+        
+        console.log(`✅ Тестовое сообщение отправлено курьеру ${courier.fullname}`)
+        successCount++
+      } catch (courierError) {
+        console.error(`❌ Ошибка отправки курьеру ${courier.fullname}:`, courierError)
+        errorCount++
+      }
+    }
     
-    console.log('✅ Тестовое сообщение отправлено в Telegram')
+    console.log(`Тестирование завершено. Успешно: ${successCount}, Ошибок: ${errorCount}`)
+    
+    if (successCount === 0) {
+      throw new Error('Не удалось отправить тестовое сообщение ни одному курьеру')
+    }
   } catch (error) {
     console.error('❌ Ошибка тестирования Telegram бота:', error)
     throw error // Пробрасываем ошибку для обработки в API
+  }
+}
+
+// Функция для поиска курьера по номеру телефона
+export async function findCourierByPhone(phoneNumber: string) {
+  try {
+    // Нормализуем номер телефона (убираем пробелы, дефисы, плюсы)
+    const normalizedPhone = phoneNumber.replace(/[\s\-\+\(\)]/g, '')
+    
+    const courier = await prisma.user.findFirst({
+      where: {
+        role: 'COURIER',
+        OR: [
+          { phoneNumber: phoneNumber },
+          { phoneNumber: normalizedPhone },
+          { phoneNumber: `+${normalizedPhone}` },
+          { phoneNumber: `+996${normalizedPhone.slice(-9)}` }, // Для кыргызских номеров
+        ]
+      }
+    })
+
+    return courier
+  } catch (error) {
+    console.error('Ошибка поиска курьера по номеру телефона:', error)
+    return null
+  }
+}
+
+// Функция для обработки регистрации курьера в Telegram
+export async function registerCourierInTelegram(chatId: string, phoneNumber: string) {
+  try {
+    console.log(`Telegram: Попытка регистрации курьера. Chat ID: ${chatId}, Phone: ${phoneNumber}`)
+    
+    // Ищем курьера по номеру телефона
+    const courier = await findCourierByPhone(phoneNumber)
+    
+    if (!courier) {
+      console.log(`Telegram: Курьер с номером ${phoneNumber} не найден в базе данных`)
+      return {
+        success: false,
+        message: `❌ Курьер с номером ${phoneNumber} не найден в системе. Обратитесь к администратору.`
+      }
+    }
+
+    console.log(`Telegram: Найден курьер: ${courier.fullname} (ID: ${courier.id})`)
+
+    // Проверяем, не зарегистрирован ли уже этот курьер
+    const existingChatId = await getCourierChatId(courier.id)
+    if (existingChatId && existingChatId === chatId) {
+      console.log(`Telegram: Курьер ${courier.fullname} уже зарегистрирован с этим Chat ID: ${existingChatId}`)
+      return {
+        success: true,
+        message: `✅ Вы уже зарегистрированы в системе, ${courier.fullname}! Ожидайте уведомления о новых заказах.`
+      }
+    }
+
+    // Сохраняем courierID и chatID в JSON формате
+    const success = await setCourierChatId(courier.id, chatId)
+    
+    if (success) {
+      console.log(`Telegram: Курьер ${courier.fullname} (ID: ${courier.id}) успешно зарегистрирован с Chat ID: ${chatId}`)
+      return {
+        success: true,
+        message: `✅ Добро пожаловать, ${courier.fullname}! Вы успешно зарегистрированы в системе уведомлений. Теперь вы будете получать уведомления о новых заказах.`,
+        data: {
+          courierId: courier.id,
+          courierName: courier.fullname,
+          chatId: chatId
+        }
+      }
+    } else {
+      console.error(`Telegram: Ошибка сохранения Chat ID для курьера ${courier.fullname}`)
+      return {
+        success: false,
+        message: `❌ Произошла ошибка при регистрации. Попробуйте позже или обратитесь к администратору.`
+      }
+    }
+  } catch (error) {
+    console.error('Ошибка регистрации курьера в Telegram:', error)
+    return {
+      success: false,
+      message: `❌ Произошла ошибка при регистрации. Попробуйте позже или обратитесь к администратору.`
+    }
   }
 }

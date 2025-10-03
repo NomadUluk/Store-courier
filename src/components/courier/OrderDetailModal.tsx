@@ -160,13 +160,13 @@ export function OrderDetailModal({
     <div className="fixed inset-0 z-[9999] overflow-y-auto">
       {/* Overlay */}
       <div 
-        className="fixed inset-0 transition-opacity"
+        className="fixed inset-0 transition-opacity backdrop-blur-sm bg-black/20"
         onClick={onClose}
       />
       
       {/* Modal */}
       <div className="flex min-h-full items-center justify-center p-4">
-        <div className="relative rounded-lg border max-w-md w-full max-h-[85vh] overflow-y-auto" style={{ 
+        <div className="relative rounded-lg border max-w-md w-full max-h-[85vh] overflow-y-auto overflow-x-hidden custom-scrollbar" style={{ 
           backgroundColor: 'var(--card-bg)', 
           borderColor: 'var(--border)', 
           boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.3)' 
@@ -198,16 +198,18 @@ export function OrderDetailModal({
             {/* Информация о клиенте - показываем только для принятых заказов */}
             {order.status !== 'COURIER_WAIT' && (
               <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <span className="text-sm font-medium" style={{ color: 'var(--foreground)' }}>{order.customerName}</span>
+                <div className="space-y-1">
+                  <div className="text-sm font-medium break-words" style={{ color: 'var(--foreground)' }}>
+                    {order.customerName}
+                  </div>
                   <a 
                     href={`tel:${order.customerPhone}`} 
                     className="text-blue-600 text-sm font-medium hover:text-blue-800 transition-colors flex items-center space-x-1"
                   >
-                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <svg className="w-4 h-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
                     </svg>
-                    <span>{order.customerPhone}</span>
+                    <span className="break-all">{order.customerPhone}</span>
                   </a>
                 </div>
                 <a 
@@ -223,13 +225,13 @@ export function OrderDetailModal({
                     }
                     // На мобильном устройстве используем geo: протокол для выбора приложений
                   }}
-                  className="text-sm font-semibold text-red-600 hover:text-red-800 transition-colors flex items-center space-x-1"
+                  className="text-sm font-semibold text-red-600 hover:text-red-800 transition-colors flex items-start space-x-1"
                 >
-                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <svg className="w-4 h-4 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
                   </svg>
-                  <span>{order.deliveryAddress}</span>
+                  <span className="break-words">{order.deliveryAddress}</span>
                 </a>
                 {order.customerComment && (
                   <p className="text-sm text-gray-500 italic">"{order.customerComment}"</p>
@@ -253,19 +255,59 @@ export function OrderDetailModal({
                     }
                     // На мобильном устройстве используем geo: протокол для выбора приложений
                   }}
-                  className="text-sm font-semibold text-red-600 hover:text-red-800 transition-colors flex items-center space-x-1"
+                  className="text-sm font-semibold text-red-600 hover:text-red-800 transition-colors flex items-start space-x-1"
                 >
-                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <svg className="w-4 h-4 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
                   </svg>
-                  <span>{order.deliveryAddress}</span>
+                  <span className="break-words">{order.deliveryAddress}</span>
                 </a>
-                {order.customerComment && (
-                  <p className="text-sm text-gray-500 italic">"{order.customerComment}"</p>
-                )}
               </div>
             )}
+
+            {/* Комментарии */}
+            <div className="space-y-2">
+              {order.customerComment && (
+                <div className="bg-green-50 p-2 rounded-md border border-green-200">
+                  <div className="flex items-start space-x-2">
+                    <svg className="w-3 h-3 text-green-500 mt-0.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                    </svg>
+                    <div className="flex-1">
+                      <p className="text-xs font-medium text-green-900">{t('customerComment')}:</p>
+                      <p className="text-xs text-green-700 italic mt-0.5">"{order.customerComment}"</p>
+                    </div>
+                  </div>
+                </div>
+              )}
+              {order.status === 'CANCELED' && order.cancelComment && (
+                <div className="bg-red-50 p-2 rounded-md border border-red-200">
+                  <div className="flex items-start space-x-2">
+                    <svg className="w-3 h-3 text-red-500 mt-0.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <div className="flex-1">
+                      <p className="text-xs font-medium text-red-900">{t('cancelComment')}:</p>
+                      <p className="text-xs text-red-700 italic mt-0.5">"{order.cancelComment}"</p>
+                    </div>
+                  </div>
+                </div>
+              )}
+              {order.adminComment && (
+                <div className="bg-blue-50 p-2 rounded-md border border-blue-200">
+                  <div className="flex items-start space-x-2">
+                    <svg className="w-3 h-3 text-blue-500 mt-0.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <div className="flex-1">
+                      <p className="text-xs font-medium text-blue-900">{t('adminComment')}:</p>
+                      <p className="text-xs text-blue-700 italic mt-0.5">"{order.adminComment}"</p>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
 
             {/* Товары в заказе */}
             <div className="border border-gray-200 rounded-lg p-3">
@@ -321,12 +363,12 @@ export function OrderDetailModal({
       {showCancelModal && (
         <div className="fixed inset-0 z-[10000] overflow-y-auto">
           <div 
-            className="fixed inset-0 transition-opacity"
+            className="fixed inset-0 transition-opacity backdrop-blur-sm bg-black/20"
             onClick={handleCancelModalClose}
           />
           
           <div className="flex min-h-full items-center justify-center p-4">
-            <div className="relative rounded-xl shadow-xl max-w-md w-full" style={{ backgroundColor: 'var(--card-bg)' }}>
+            <div className="relative rounded-xl shadow-xl max-w-md w-full custom-scrollbar" style={{ backgroundColor: 'var(--card-bg)' }}>
               
               {/* Header */}
               <div className="px-6 py-4 border-b" style={{ borderColor: 'var(--border)' }}>

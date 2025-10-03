@@ -6,9 +6,10 @@ import type { OrderWithDetails, OrderStatus } from '@/types'
 interface CompactOrderCardProps {
   order: OrderWithDetails
   onClick: () => void
+  isGlowing?: boolean
 }
 
-export function CompactOrderCard({ order, onClick }: CompactOrderCardProps) {
+export function CompactOrderCard({ order, onClick, isGlowing = false }: CompactOrderCardProps) {
   const { t } = useLanguage()
   
   const getStatusBadge = (status: OrderStatus) => {
@@ -83,7 +84,11 @@ export function CompactOrderCard({ order, onClick }: CompactOrderCardProps) {
   return (
     <div 
       onClick={onClick}
-      className="card p-2 cursor-pointer hover:shadow-lg transition-all duration-200 hover:scale-[1.02] border-2"
+      className={`card p-2 cursor-pointer hover:shadow-lg transition-all duration-200 hover:scale-[1.02] border-2 ${
+        isGlowing 
+          ? 'animate-pulse shadow-lg shadow-blue-500/50 border-blue-400 bg-blue-50' 
+          : ''
+      }`}
     >
       {/* Заголовок с статусом */}
       <div className="flex items-center justify-between mb-2">
@@ -144,7 +149,7 @@ export function CompactOrderCard({ order, onClick }: CompactOrderCardProps) {
               {totalItems} {totalItems === 1 ? t('item') : totalItems < 5 ? t('items2') : t('items')}
             </span>
             {/* Индикатор комментария */}
-            {order.customerComment && (
+            {(order.customerComment || order.cancelComment || order.adminComment) && (
               <div className="flex items-center space-x-1">
                 <svg className="w-3 h-3 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-1l-4 4z" />

@@ -15,6 +15,36 @@ export default function CourierDashboard() {
   const { t } = useLanguage()
   const router = useRouter()
   const searchParams = useSearchParams()
+  
+  // Глобальная обработка ошибок расширений браузера
+  useEffect(() => {
+    const handleGlobalError = (event: ErrorEvent) => {
+      if (event.message.includes('message channel closed') || 
+          event.message.includes('asynchronous response')) {
+        console.log('🔧 Игнорируем ошибку расширения браузера:', event.message)
+        event.preventDefault()
+        return false
+      }
+    }
+    
+    const handleUnhandledRejection = (event: PromiseRejectionEvent) => {
+      if (event.reason && event.reason.message && 
+          (event.reason.message.includes('message channel closed') ||
+           event.reason.message.includes('asynchronous response'))) {
+        console.log('🔧 Игнорируем ошибку расширения браузера:', event.reason.message)
+        event.preventDefault()
+        return false
+      }
+    }
+    
+    window.addEventListener('error', handleGlobalError)
+    window.addEventListener('unhandledrejection', handleUnhandledRejection)
+    
+    return () => {
+      window.removeEventListener('error', handleGlobalError)
+      window.removeEventListener('unhandledrejection', handleUnhandledRejection)
+    }
+  }, [])
   const [orders, setOrders] = useState<OrderWithDetails[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [isUpdating, setIsUpdating] = useState(false)
@@ -29,6 +59,9 @@ export default function CourierDashboard() {
   const [connectionStatus, setConnectionStatus] = useState<'connected' | 'disconnected' | 'unknown'>('unknown')
   const [isInitialized, setIsInitialized] = useState<boolean>(false)
   
+  // Состояние для эффекта свечения карточек
+  const [glowingOrders, setGlowingOrders] = useState<Set<string>>(new Set())
+  
   // Состояние для пагинации
   const [currentPage, setCurrentPage] = useState({
     available: 1,
@@ -38,16 +71,68 @@ export default function CourierDashboard() {
   })
   const ORDERS_PER_PAGE = 8
 
+  // Функция для добавления эффекта свечения к заказу
+  const addGlowEffect = useCallback((orderId: string) => {
+    setGlowingOrders(prev => new Set(prev).add(orderId))
+    // Убираем эффект через 3 секунды
+    setTimeout(() => {
+      setGlowingOrders(prev => {
+        const newSet = new Set(prev)
+        newSet.delete(orderId)
+        return newSet
+      })
+    }, 3000)
+  }, [])
+
+  // Функция для поиска заказа и определения нужной вкладки и страницы
+  const findOrderLocation = useCallback((orderId: string) => {
+    const availableOrders = orders.filter(order => order.status === 'COURIER_WAIT')
+    const myOrders = orders.filter(order => 
+      order.courierId === currentCourierId && 
+      (order.status === 'COURIER_PICKED' || order.status === 'ENROUTE')
+    )
+    const completedOrders = orders.filter(order => order.status === 'DELIVERED')
+    const canceledOrders = orders.filter(order => order.status === 'CANCELED')
+
+    // Проверяем в каждой категории
+    const categories = [
+      { name: 'available' as TabType, orders: availableOrders },
+      { name: 'my' as TabType, orders: myOrders },
+      { name: 'completed' as TabType, orders: completedOrders },
+      { name: 'canceled' as TabType, orders: canceledOrders }
+    ]
+
+    for (const category of categories) {
+      const orderIndex = category.orders.findIndex(order => order.id === orderId)
+      if (orderIndex !== -1) {
+        const page = Math.ceil((orderIndex + 1) / ORDERS_PER_PAGE)
+        return { tab: category.name, page }
+      }
+    }
+
+    return null
+  }, [orders, currentCourierId, ORDERS_PER_PAGE])
+
   // Функция для проверки счетчика и получения новых заказов
   const checkForNewOrders = useCallback(async () => {
     try {
+      // Добавляем обработку ошибок расширений браузера
+      if (typeof window !== 'undefined') {
+        window.addEventListener('error', (event) => {
+          if (event.message.includes('message channel closed')) {
+            console.log('🔧 Игнорируем ошибку расширения браузера')
+            event.preventDefault()
+            return false
+          }
+        })
+      }
       // Получаем текущий счетчик доступных заказов
       const countResponse = await fetch('/api/courier/orders/count', {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
         },
-        signal: AbortSignal.timeout(5000) // 5 секунд таймаут
+        signal: AbortSignal.timeout(15000) // 15 секунд таймаут
       })
       
       if (!countResponse.ok) {
@@ -75,7 +160,7 @@ export default function CourierDashboard() {
           headers: {
             'Content-Type': 'application/json',
           },
-          signal: AbortSignal.timeout(5000)
+          signal: AbortSignal.timeout(15000)
         })
         
         if (!recentResponse.ok) {
@@ -95,7 +180,7 @@ export default function CourierDashboard() {
         newOrders.forEach(async (order: OrderWithDetails) => {
           try {
             const controller = new AbortController()
-            const timeoutId = setTimeout(() => controller.abort(), 10000) // 10 секунд таймаут
+            const timeoutId = setTimeout(() => controller.abort(), 20000) // 20 секунд таймаут
             
             const response = await fetch('/api/telegram/notify-new-order', {
               method: 'POST',
@@ -128,14 +213,18 @@ export default function CourierDashboard() {
       setConnectionStatus('connected')
       
     } catch (error) {
+      // Не логируем таймауты как ошибки, это нормальное поведение
+      if (error instanceof Error && error.name === 'AbortError') {
+        console.log('⏰ Таймаут при проверке новых заказов - это нормально')
+        return
+      }
+      
       console.error('Ошибка проверки новых заказов:', error)
       setConnectionStatus('disconnected')
       
       // Более детальная обработка ошибок
       if (error instanceof Error) {
-        if (error.name === 'AbortError') {
-          console.log('⏰ Таймаут при проверке новых заказов')
-        } else if (error.message.includes('Failed to fetch')) {
+        if (error.message.includes('Failed to fetch')) {
           console.log('🌐 Проблема с подключением к серверу')
         } else {
           console.log('❌ Неизвестная ошибка:', error.message)
@@ -154,7 +243,7 @@ export default function CourierDashboard() {
           'Content-Type': 'application/json',
         },
         // Добавляем таймаут для запроса
-        signal: AbortSignal.timeout(10000) // 10 секунд таймаут
+        signal: AbortSignal.timeout(20000) // 20 секунд таймаут
       })
       
       if (!response.ok) {
@@ -191,13 +280,17 @@ export default function CourierDashboard() {
         console.error('Ошибка API:', data.error)
       }
     } catch (error) {
+      // Не логируем таймауты как ошибки, это нормальное поведение
+      if (error instanceof Error && error.name === 'AbortError') {
+        console.log('⏰ Запрос был прерван (таймаут) - это нормально')
+        return
+      }
+      
       console.error('Ошибка загрузки заказов:', error)
       
       // Обрабатываем разные типы ошибок
       if (error instanceof Error) {
-        if (error.name === 'AbortError') {
-          console.log('⏰ Запрос был прерван (таймаут)')
-        } else if (error.name === 'TypeError' && error.message.includes('Failed to fetch')) {
+        if (error.name === 'TypeError' && error.message.includes('Failed to fetch')) {
           console.log('🌐 Сервер недоступен - проверьте, что сервер запущен')
           setConnectionStatus('disconnected')
         } else {
@@ -265,17 +358,29 @@ export default function CourierDashboard() {
         }
 
         const targetTab = getTargetTab(status)
-        if (targetTab !== activeTab) {
-          setActiveTab(targetTab)
-          // Сбрасываем пагинацию для новой вкладки
-          setCurrentPage(prev => ({
-            ...prev,
-            [targetTab]: 1
-          }))
-        }
-
+        
+        // Добавляем эффект свечения к обновленному заказу
+        addGlowEffect(orderId)
+        
         // Обновляем данные заказов для корректного отображения
         await fetchOrders(false)
+        
+        // После обновления данных находим местоположение заказа
+        setTimeout(() => {
+          const location = findOrderLocation(orderId)
+          if (location) {
+            // Переключаемся на нужную вкладку
+            if (location.tab !== activeTab) {
+              setActiveTab(location.tab)
+            }
+            
+            // Переходим на нужную страницу
+            setCurrentPage(prev => ({
+              ...prev,
+              [location.tab]: location.page
+            }))
+          }
+        }, 100) // Небольшая задержка для обновления данных
       } else {
         setError(data.error || t('error'))
       }
@@ -347,7 +452,7 @@ export default function CourierDashboard() {
     }
   }, [orders, searchParams])
 
-  // Автоматическое обновление каждые 10 секунд
+  // Автоматическое обновление каждые 5 секунд
   useEffect(() => {
     const interval = setInterval(() => {
       if (isInitialized) {
@@ -356,7 +461,7 @@ export default function CourierDashboard() {
         // Затем обновляем общий список заказов
         fetchOrders(false) // Обновляем без показа loading
       }
-    }, 10000) // 10 секунд
+    }, 5000) // 5 секунд
 
     return () => clearInterval(interval)
   }, [fetchOrders, checkForNewOrders, isInitialized])
@@ -514,36 +619,7 @@ export default function CourierDashboard() {
                   hour: '2-digit', 
                   minute: '2-digit',
                   second: '2-digit'
-                })} • Обновление каждые 10 сек
-              </span>
-              <span className="text-xs px-2 py-1 bg-blue-100 text-blue-600 rounded-full">
-                Счетчик: {previousAvailableCount}
-              </span>
-              <button
-                onClick={async () => {
-                  try {
-                    const response = await fetch('/api/test/connection')
-                    const data = await response.json()
-                    console.log('Тест подключения:', data)
-                    alert(`Подключение: ${data.success ? '✅ OK' : '❌ Ошибка'}`)
-                  } catch (error) {
-                    console.error('Ошибка теста:', error)
-                    alert('❌ Сервер недоступен')
-                  }
-                }}
-                className="text-xs px-2 py-1 bg-green-100 text-green-600 rounded-full hover:bg-green-200 transition-colors"
-              >
-                🔧 Тест
-              </button>
-              <span className={`text-xs px-2 py-1 rounded-full ${
-                connectionStatus === 'connected' 
-                  ? 'bg-green-100 text-green-600' 
-                  : connectionStatus === 'disconnected'
-                  ? 'bg-red-100 text-red-600'
-                  : 'bg-yellow-100 text-yellow-600'
-              }`}>
-                {connectionStatus === 'connected' ? 'Подключено' : 
-                 connectionStatus === 'disconnected' ? 'Отключено' : 'Проверка...'}
+                })}
               </span>
             </div>
           </div>
@@ -707,6 +783,7 @@ export default function CourierDashboard() {
                         key={order.id}
                         order={order}
                         onClick={() => handleOrderClick(order)}
+                        isGlowing={glowingOrders.has(order.id)}
                       />
                     ))}
                   </div>
@@ -737,6 +814,7 @@ export default function CourierDashboard() {
                         key={order.id}
                         order={order}
                         onClick={() => handleOrderClick(order)}
+                        isGlowing={glowingOrders.has(order.id)}
                       />
                     ))}
                   </div>
@@ -767,6 +845,7 @@ export default function CourierDashboard() {
                         key={order.id}
                         order={order}
                         onClick={() => handleOrderClick(order)}
+                        isGlowing={glowingOrders.has(order.id)}
                       />
                     ))}
                   </div>
@@ -797,6 +876,7 @@ export default function CourierDashboard() {
                         key={order.id}
                         order={order}
                         onClick={() => handleOrderClick(order)}
+                        isGlowing={glowingOrders.has(order.id)}
                       />
                     ))}
                   </div>

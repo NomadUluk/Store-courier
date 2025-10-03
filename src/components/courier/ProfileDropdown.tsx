@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect } from 'react'
 import { useLanguage } from '@/contexts/LanguageContext'
+import { useNotifications } from '@/components/ui/NotificationToast'
 import { 
   UserIcon, 
   KeyIcon, 
@@ -17,6 +18,7 @@ interface ProfileDropdownProps {
 
 export function ProfileDropdown({ isOpen, onClose, anchorRef }: ProfileDropdownProps) {
   const { t } = useLanguage()
+  const { showNotification, NotificationContainer } = useNotifications()
   const [activeView, setActiveView] = useState<'main' | 'profile' | 'password' | 'phone' | 'telegram'>('main')
   const [name, setName] = useState('')
   const [phone, setPhone] = useState('')
@@ -91,14 +93,26 @@ export function ProfileDropdown({ isOpen, onClose, anchorRef }: ProfileDropdownP
       const data = await response.json()
       
       if (data.success) {
-        // Можно добавить уведомление об успехе
-        console.log('Имя обновлено')
+        showNotification({
+          type: 'success',
+          title: t('success') || 'Успешно',
+          message: t('nameUpdated') || 'Имя успешно обновлено'
+        })
+        setName(name.trim())
       } else {
-        alert(data.error || 'Ошибка при обновлении имени')
+        showNotification({
+          type: 'error',
+          title: t('error') || 'Ошибка',
+          message: data.error || t('nameUpdateError') || 'Ошибка при обновлении имени'
+        })
       }
     } catch (error) {
       console.error('Error updating profile:', error)
-      alert('Ошибка при обновлении имени')
+      showNotification({
+        type: 'error',
+        title: t('error') || 'Ошибка',
+        message: t('nameUpdateError') || 'Ошибка при обновлении имени'
+      })
     } finally {
       setIsSaving(false)
     }
@@ -123,13 +137,25 @@ export function ProfileDropdown({ isOpen, onClose, anchorRef }: ProfileDropdownP
       if (data.success) {
         setPhone(newPhone.trim())
         setNewPhone('')
-        console.log('Телефон обновлен')
+        showNotification({
+          type: 'success',
+          title: t('success') || 'Успешно',
+          message: t('phoneUpdated') || 'Телефон успешно обновлен'
+        })
       } else {
-        alert(data.error || 'Ошибка при обновлении телефона')
+        showNotification({
+          type: 'error',
+          title: t('error') || 'Ошибка',
+          message: data.error || t('phoneUpdateError') || 'Ошибка при обновлении телефона'
+        })
       }
     } catch (error) {
       console.error('Error updating phone:', error)
-      alert('Ошибка при обновлении телефона')
+      showNotification({
+        type: 'error',
+        title: t('error') || 'Ошибка',
+        message: t('phoneUpdateError') || 'Ошибка при обновлении телефона'
+      })
     } finally {
       setIsSaving(false)
     }
@@ -138,7 +164,11 @@ export function ProfileDropdown({ isOpen, onClose, anchorRef }: ProfileDropdownP
   const handlePasswordUpdate = (e: React.FormEvent) => {
     e.preventDefault()
     if (newPassword !== confirmPassword) {
-      alert(t('passwordMismatch') || 'Пароли не совпадают')
+      showNotification({
+        type: 'error',
+        title: t('error') || 'Ошибка',
+        message: t('passwordMismatch') || 'Пароли не совпадают'
+      })
       return
     }
     console.log('Updating password')
@@ -148,28 +178,109 @@ export function ProfileDropdown({ isOpen, onClose, anchorRef }: ProfileDropdownP
   const testTelegramBot = async () => {
     setIsTestingTelegram(true)
     try {
-      const response = await fetch('/api/test/telegram', {
+      console.log('🤖 Тестирование Telegram бота...')
+      
+      // Webhook функциональность удалена - используем только polling
+      console.log('✅ Используем только polling режим (webhook отключен)')
+      
+      // Проверяем статус polling
+      const pollingResponse = await fetch('/api/telegram/start-polling', {
         method: 'POST'
       })
+      const pollingData = await pollingResponse.json()
       
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`)
-      }
-      
-      const data = await response.json()
-      
-      if (data.success) {
-        alert('✅ Тестовое сообщение отправлено в Telegram!')
+      if (pollingData.success) {
+        // Отправляем тестовое сообщение в бот
+        const testResult = await sendTestMessage()
+        
+        showNotification({
+          type: 'success',
+          title: 'Telegram бот работает!',
+          message: 'Polling режим активен и готов к работе.\n\nТестовое сообщение обработано.'
+        })
+      } else if (pollingData.error.includes('уже запущен')) {
+        // Отправляем тестовое сообщение в бот
+        const testResult = await sendTestMessage()
+        
+        showNotification({
+          type: 'success',
+          title: 'Telegram бот уже запущен!',
+          message: 'Polling режим активен.\n\nТестовое сообщение обработано.'
+        })
       } else {
-        alert('❌ Ошибка отправки тестового сообщения: ' + data.error)
+        showNotification({
+          type: 'error',
+          title: 'Ошибка Telegram бота',
+          message: pollingData.error
+        })
       }
+      
     } catch (error) {
-      console.error('Ошибка тестирования бота:', error)
-      alert('❌ Ошибка тестирования бота')
+      console.error('❌ Ошибка тестирования бота:', error)
+      showNotification({
+        type: 'error',
+        title: 'Ошибка подключения',
+        message: 'Убедитесь, что сервер запущен.'
+      })
     } finally {
       setIsTestingTelegram(false)
     }
   }
+
+  const sendTestMessage = async () => {
+    try {
+      // Сначала пробуем простой тест
+      console.log('🧪 Пробуем простой тест API...')
+      const simpleTestResponse = await fetch('/api/telegram/simple-test', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          message: '🤖 Тест связи с ботом'
+        })
+      })
+      
+      if (simpleTestResponse.ok) {
+        const simpleData = await simpleTestResponse.json()
+        console.log('✅ Простой тест API работает:', simpleData)
+      } else {
+        console.log('⚠️ Простой тест API не работает, статус:', simpleTestResponse.status)
+      }
+      
+      // Теперь пробуем основной тест
+      console.log('🧪 Пробуем основной тест API...')
+      const response = await fetch('/api/telegram/test-message', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          message: '🤖 Тест связи с ботом\n\n✅ Бот работает корректно!\n📱 Уведомления будут приходить автоматически.'
+        })
+      })
+      
+      if (response.ok) {
+        const data = await response.json()
+        
+        if (!data.success) {
+          console.log('⚠️ Не удалось отправить тестовое сообщение:', data.error)
+        } else {
+          console.log('✅ Тестовое сообщение отправлено')
+        }
+      } else {
+        console.log('❌ Основной тест API не работает, статус:', response.status)
+        
+        if (response.status === 404) {
+          console.log('💡 Endpoint /api/telegram/test-message не найден!')
+        }
+      }
+      
+    } catch (error) {
+      console.log('⚠️ Ошибка отправки тестового сообщения:', error)
+    }
+  }
+
 
 
   return (
@@ -252,43 +363,19 @@ export function ProfileDropdown({ isOpen, onClose, anchorRef }: ProfileDropdownP
             <button
               onClick={testTelegramBot}
               disabled={isTestingTelegram}
-              className="w-full flex items-center justify-between p-3 hover:bg-gray-50 dark:hover:bg-gray-800 rounded-lg transition-colors disabled:opacity-50"
+              className="w-full flex items-center justify-between p-3 hover:bg-gray-50 dark:hover:bg-gray-800 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <div className="flex items-center space-x-3">
                 <ChatBubbleLeftRightIcon className="w-5 h-5" style={{ color: 'var(--muted)' }} />
                 <span style={{ color: 'var(--foreground)' }}>
-                  {isTestingTelegram ? 'Тестирование...' : '🤖 Тест Telegram бота'}
+                  {isTestingTelegram ? 'Проверка...' : '🤖 Тест Telegram бота'}
                 </span>
               </div>
+              {isTestingTelegram && (
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-gray-600"></div>
+              )}
             </button>
 
-            <button
-              onClick={async () => {
-                try {
-                  const response = await fetch('/api/telegram/notify-all-courier-wait', {
-                    method: 'POST'
-                  })
-                  
-                  if (response.ok) {
-                    alert('✅ Уведомления отправлены для всех заказов COURIER_WAIT!')
-                  } else {
-                    const data = await response.json()
-                    alert('❌ Ошибка: ' + (data.error || 'Неизвестная ошибка'))
-                  }
-                } catch (error) {
-                  console.error('Ошибка отправки уведомлений:', error)
-                  alert('❌ Ошибка отправки уведомлений')
-                }
-              }}
-              className="w-full flex items-center justify-between p-3 hover:bg-gray-50 dark:hover:bg-gray-800 rounded-lg transition-colors"
-            >
-              <div className="flex items-center space-x-3">
-                <ChatBubbleLeftRightIcon className="w-5 h-5" style={{ color: 'var(--muted)' }} />
-                <span style={{ color: 'var(--foreground)' }}>
-                  📢 Уведомить о всех заказах
-                </span>
-              </div>
-            </button>
             </div>
           )}
         </div>
@@ -422,6 +509,9 @@ export function ProfileDropdown({ isOpen, onClose, anchorRef }: ProfileDropdownP
           </form>
         </div>
       )}
+      
+      {/* Контейнер уведомлений */}
+      <NotificationContainer />
     </div>
   )
 }

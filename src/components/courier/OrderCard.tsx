@@ -105,12 +105,48 @@ export function OrderCard({ order, onStatusUpdate, isUpdating = false }: OrderCa
             <span className="font-medium w-20" style={{ color: 'var(--muted)' }}>{t('address')}:</span>
             <span className="flex-1" style={{ color: 'var(--foreground)' }}>{order.deliveryAddress}</span>
           </div>
-          {order.customerComment && (
-            <div className="flex items-start space-x-2">
-              <span className="font-medium w-20" style={{ color: 'var(--muted)' }}>{t('comment')}:</span>
-              <span className="flex-1 italic" style={{ color: 'var(--foreground)' }}>{order.customerComment}</span>
-            </div>
-          )}
+          {/* Комментарии */}
+          <div className="space-y-2">
+            {order.customerComment && (
+              <div className="bg-green-50 p-2 rounded-md border border-green-200">
+                <div className="flex items-start space-x-2">
+                  <svg className="w-3 h-3 text-green-500 mt-0.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                  </svg>
+                  <div className="flex-1">
+                    <p className="text-xs font-medium text-green-900">{t('customerComment')}:</p>
+                    <p className="text-xs text-green-700 italic mt-0.5">"{order.customerComment}"</p>
+                  </div>
+                </div>
+              </div>
+            )}
+            {order.status === 'CANCELED' && order.cancelComment && (
+              <div className="bg-red-50 p-2 rounded-md border border-red-200">
+                <div className="flex items-start space-x-2">
+                  <svg className="w-3 h-3 text-red-500 mt-0.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  <div className="flex-1">
+                    <p className="text-xs font-medium text-red-900">{t('cancelComment')}:</p>
+                    <p className="text-xs text-red-700 italic mt-0.5">"{order.cancelComment}"</p>
+                  </div>
+                </div>
+              </div>
+            )}
+            {order.adminComment && (
+              <div className="bg-blue-50 p-2 rounded-md border border-blue-200">
+                <div className="flex items-start space-x-2">
+                  <svg className="w-3 h-3 text-blue-500 mt-0.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  <div className="flex-1">
+                    <p className="text-xs font-medium text-blue-900">{t('adminComment')}:</p>
+                    <p className="text-xs text-blue-700 italic mt-0.5">"{order.adminComment}"</p>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
