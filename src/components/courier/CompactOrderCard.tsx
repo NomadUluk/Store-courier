@@ -14,17 +14,17 @@ export function CompactOrderCard({ order, onClick, isGlowing = false }: CompactO
   
   const getStatusBadge = (status: OrderStatus) => {
     const statusConfig = {
-      CREATED: { label: t('created'), color: 'bg-gray-100 text-gray-800' },
-      COURIER_WAIT: { label: t('courierWait'), color: 'bg-yellow-100 text-yellow-800' },
-      COURIER_PICKED: { label: t('courierPicked'), color: 'bg-blue-100 text-blue-800' },
-      ENROUTE: { label: t('enroute'), color: 'bg-primary text-white' },
-      DELIVERED: { label: t('deliveredStatus'), color: 'bg-green-100 text-green-800' },
-      CANCELED: { label: t('canceled'), color: 'bg-red-100 text-red-800' }
+      CREATED: { label: t('created'), color: 'bg-gray-500/20 text-gray-300' },
+      COURIER_WAIT: { label: t('courierWait'), color: 'bg-yellow-500/20 text-yellow-400' },
+      COURIER_PICKED: { label: t('courierPicked'), color: 'bg-blue-500/20 text-blue-400' },
+      ENROUTE: { label: t('enroute'), color: 'bg-blue-500/20 text-blue-400' },
+      DELIVERED: { label: t('deliveredStatus'), color: 'bg-green-500/20 text-green-400' },
+      CANCELED: { label: t('canceled'), color: 'bg-red-500/20 text-red-400' }
     }
     
     const config = statusConfig[status]
     return (
-      <span className={`px-2 py-1 rounded-full text-xs font-medium ${config.color}`}>
+      <span className={`px-2 py-1 rounded-full text-xs ${config.color}`}>
         {config.label}
       </span>
     )
@@ -84,83 +84,89 @@ export function CompactOrderCard({ order, onClick, isGlowing = false }: CompactO
   return (
     <div 
       onClick={onClick}
-      className={`card p-2 cursor-pointer hover:shadow-lg transition-all duration-200 hover:scale-[1.02] border-2 ${
+      className={`card p-2 sm:p-3 lg:p-4 cursor-pointer transition-all duration-300 border group ${
         isGlowing 
-          ? 'animate-pulse shadow-lg shadow-blue-500/50 border-blue-400 bg-blue-50' 
+          ? 'animate-pulse shadow-2xl shadow-green-500/50 border-green-400 ring-2 ring-green-400 ring-offset-2' 
           : ''
       }`}
+      style={{
+        background: isGlowing 
+          ? 'linear-gradient(135deg, rgba(16, 185, 129, 0.08) 0%, rgba(5, 150, 105, 0.04) 100%)'
+          : 'var(--card-bg)'
+      }}
     >
-      {/* Заголовок с статусом */}
-      <div className="flex items-center justify-between mb-2">
-        {getStatusIcon(order.status)}
-        {getStatusBadge(order.status)}
-      </div>
-
-      {/* Табличная компоновка */}
-      <div className="space-y-1">
-        {/* Строка 1: Номер заказа / Дата и время */}
-        <div className="grid grid-cols-2 gap-2 text-xs">
-          <div>
-            <span className="font-bold text-sm" style={{ color: 'var(--foreground)' }}>
-              #{order.id.slice(-8)}
-            </span>
-          </div>
-          <div className="text-right font-medium" style={{ color: 'var(--foreground)' }}>
-            {new Date(order.createdAt).toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit' })} {' '}
-            {new Date(order.createdAt).toLocaleTimeString('ru-RU', { 
+      {/* Основная строка: ID, статус, дата, сумма */}
+      <div className="flex items-center justify-between mb-2 lg:mb-3">
+        <div className="flex items-center space-x-3">
+          <span className="text-base lg:text-lg tracking-tight text-white">
+            #{order.id.slice(-8)}
+          </span>
+          {getStatusBadge(order.status)}
+          <span className="text-sm lg:text-base text-gray-400">
+            {new Date(order.createdAt).toLocaleDateString('ru-RU', { 
+              day: '2-digit', 
+              month: 'short',
               hour: '2-digit', 
               minute: '2-digit' 
             })}
-          </div>
+          </span>
         </div>
-
-        {/* Строка 2: ФИО клиента / Номер клиента (только для принятых заказов) */}
-        {order.status !== 'COURIER_WAIT' && (
-          <div className="grid grid-cols-2 gap-2 text-xs">
-            <div className="font-medium truncate" style={{ color: 'var(--foreground)' }}>
-              {order.customerName}
-            </div>
-            <div className="text-right flex items-center justify-end space-x-1" style={{ color: 'var(--muted)' }}>
-              <svg className="w-3 h-3 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
-              </svg>
-              <span className="truncate">{order.customerPhone}</span>
-            </div>
-          </div>
-        )}
-
-        {/* Строка 3: Адрес */}
-        <div className="flex items-start space-x-1">
-          <svg className="w-3 h-3 text-red-500 mt-0.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-          </svg>
-          <p className="text-xs font-semibold line-clamp-1" style={{ color: 'var(--foreground)' }}>
-            {order.deliveryAddress}
-          </p>
+        <div className="text-base lg:text-lg gradient-text">
+          {totalAmount.toLocaleString('ru-RU')} ₽
         </div>
       </div>
 
-      {/* Нижняя строка: Товары и сумма */}
-      <div className="border-t pt-1.5 mt-2" style={{ borderColor: 'var(--border)' }}>
-        <div className="flex justify-between items-center">
-          <div className="flex items-center space-x-2">
-            <span className="text-xs" style={{ color: 'var(--muted)' }}>
-              {totalItems} {totalItems === 1 ? t('item') : totalItems < 5 ? t('items2') : t('items')}
+      {/* Вторая строка: Клиент и телефон (только для принятых заказов) */}
+      {order.status !== 'COURIER_WAIT' && (
+        <div className="flex items-center space-x-4 mb-2 lg:mb-3 text-sm lg:text-base">
+          <div className="flex items-center space-x-1 lg:space-x-2">
+            <svg className="w-4 h-4 lg:w-5 lg:h-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+            </svg>
+            <span className="truncate text-white max-w-[120px] sm:max-w-[150px] lg:max-w-none">
+              {order.customerName}
             </span>
-            {/* Индикатор комментария */}
-            {(order.customerComment || order.cancelComment || order.adminComment) && (
-              <div className="flex items-center space-x-1">
-                <svg className="w-3 h-3 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-1l-4 4z" />
-                </svg>
-                <span className="text-xs text-blue-600">{t('hasComment')}</span>
-              </div>
-            )}
           </div>
-          <div className="font-bold text-sm text-primary">
-            {totalAmount.toLocaleString('ru-RU')} ₽
+          <div className="flex items-center space-x-1 lg:space-x-2">
+            <svg className="w-4 h-4 lg:w-5 lg:h-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
+            </svg>
+            <span className="text-gray-400">
+              {order.customerPhone}
+            </span>
           </div>
+        </div>
+      )}
+
+      {/* Третья строка: Адрес и товары */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-start space-x-2 text-sm lg:text-base flex-1 min-w-0">
+          <svg className="w-4 h-4 lg:w-5 lg:h-5 text-gray-400 mt-0.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+          </svg>
+          <p className="line-clamp-1 leading-tight truncate text-gray-400 max-w-[200px] sm:max-w-[250px] lg:max-w-none">
+            {order.deliveryAddress}
+          </p>
+        </div>
+        
+        <div className="flex items-center space-x-2 ml-3">
+          <div className="flex items-center space-x-1 px-2 py-1 lg:px-3 lg:py-1.5 rounded text-sm lg:text-base" style={{ backgroundColor: 'var(--background-subtle)' }}>
+            <svg className="w-4 h-4 lg:w-5 lg:h-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+            </svg>
+            <span className="text-white">
+              {totalItems}
+            </span>
+          </div>
+          {/* Индикатор комментария */}
+          {(order.customerComment || order.cancelComment || order.adminComment) && (
+            <div className="flex items-center justify-center w-7 h-7 lg:w-8 lg:h-8 rounded bg-blue-50 dark:bg-blue-500/10">
+              <svg className="w-4 h-4 lg:w-5 lg:h-5 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-1l-4 4z" />
+              </svg>
+            </div>
+          )}
         </div>
       </div>
 

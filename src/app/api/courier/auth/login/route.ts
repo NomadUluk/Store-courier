@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { authenticateCourier, createToken } from '@/lib/auth'
+import { getCourierChatId } from '@/lib/settings'
 import type { ApiResponse } from '@/types'
 
 export async function POST(request: NextRequest) {
@@ -23,6 +24,10 @@ export async function POST(request: NextRequest) {
       }, { status: 401 })
     }
 
+    // Проверяем наличие COURIER_CHAT_ID для Telegram уведомлений
+    const hasTelegramChatId = await getCourierChatId(user.id)
+    console.log(`Курьер ${user.fullname} (${user.id}): Telegram Chat ID ${hasTelegramChatId ? 'найден' : 'не найден'}`)
+
     const token = createToken({
       id: user.id,
       phoneNumber: user.phoneNumber,
@@ -37,7 +42,8 @@ export async function POST(request: NextRequest) {
           fullname: user.fullname,
           phoneNumber: user.phoneNumber,
           role: user.role
-        }
+        },
+        hasTelegramNotifications: !!hasTelegramChatId
       },
       message: 'Успешная авторизация'
     })

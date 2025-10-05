@@ -149,7 +149,8 @@ const translations = {
     'notSpecified': 'Не указано',
     'enterNewName': 'Введите новое имя',
     'saving': 'Сохранение...',
-    'connectionError': 'Ошибка подключения к серверу'
+    'connectionError': 'Ошибка подключения к серверу',
+    'searchOrders': 'Поиск по заказам (ID, адрес, имя, телефон, товары...)'
   },
   ky: {
     // Общие
@@ -288,7 +289,8 @@ const translations = {
     'notSpecified': 'Көрсөтүлгөн эмес',
     'enterNewName': 'Жаңы атыңызды киргизиңиз',
     'saving': 'Сактоодо...',
-    'connectionError': 'Серверге туташуу катасы'
+    'connectionError': 'Серверге туташуу катасы',
+    'searchOrders': 'Буйрутмаларды издөө (ID, дарек, ат, телефон, товарлар...)'
   }
 }
 

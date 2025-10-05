@@ -9,7 +9,7 @@ async function testBotDirect() {
 
     // Получаем токен из базы данных
     const tokenSetting = await prisma.setting.findUnique({
-      where: { key: 'TELEGRAM_BOT_TOKEN' }
+      where: { key: 'COURIER_BOT_TOKEN' }
     })
 
     if (!tokenSetting || !tokenSetting.value) {
@@ -98,7 +98,7 @@ async function testBotDirect() {
       if (courier) {
         // Сохраняем chat_id курьера
         const currentChatIds = await prisma.setting.findUnique({
-          where: { key: 'TELEGRAM_CHAT_ID' }
+          where: { key: 'COURIER_CHAT_ID' }
         })
 
         let chatIds = {}
@@ -113,7 +113,7 @@ async function testBotDirect() {
         chatIds[courier.id] = chatId.toString()
 
         await prisma.setting.update({
-          where: { key: 'TELEGRAM_CHAT_ID' },
+          where: { key: 'COURIER_CHAT_ID' },
           data: { value: JSON.stringify(chatIds) }
         })
 

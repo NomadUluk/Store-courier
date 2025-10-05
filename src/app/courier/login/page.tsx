@@ -29,8 +29,13 @@ export default function CourierLoginPage() {
 
       if (data.success) {
         console.log('Авторизация успешна, перенаправление...')
+        
+        // Передаем информацию о наличии Telegram уведомлений через query параметр
+        const hasTelegramNotifications = data.data?.hasTelegramNotifications
+        const queryParam = hasTelegramNotifications === false ? '?noTelegram=true' : ''
+        
         // Используем роутер Next.js для перенаправления
-        router.push('/courier/dashboard')
+        router.push(`/courier/dashboard${queryParam}`)
       } else {
         setError(data.error || 'Ошибка входа')
       }
@@ -42,26 +47,39 @@ export default function CourierLoginPage() {
   }
 
   return (
-    <div className="min-h-screen bg-white flex flex-col" style={{ backgroundColor: '#ffffff', color: '#1a1a1a' }}>
-      {/* Декоративный фон */}
-      <div className="absolute inset-0 bg-gradient-to-br from-orange-50 to-white" style={{ background: 'linear-gradient(to bottom right, #fff7ed, #ffffff)' }}></div>
+    <div className="min-h-screen flex flex-col relative overflow-hidden" style={{ backgroundColor: '#1a1f2e' }}>
+      {/* Декоративные элементы фона */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute -top-1/2 -right-1/2 w-[800px] h-[800px] bg-white/5 rounded-full blur-3xl"></div>
+        <div className="absolute -bottom-1/2 -left-1/2 w-[800px] h-[800px] bg-white/5 rounded-full blur-3xl"></div>
+        <div className="absolute top-1/4 left-1/4 w-[400px] h-[400px] bg-white/3 rounded-full blur-2xl"></div>
+      </div>
       
       {/* Основной контент */}
-      <div className="relative flex-1 flex items-center justify-center px-6 py-12">
-        <div className="w-full max-w-md">
+      <div className="relative flex-1 flex items-center justify-center px-4 sm:px-6 py-12">
+        <div className="w-full max-w-md animate-fadeIn">
           
-          {/* Заголовок */}
-          <div className="text-center mb-10">
-            <h1 className="text-3xl font-bold mb-2" style={{ color: '#1a1a1a' }}>
-              Вход в систему
-            </h1>
-            <p className="text-lg" style={{ color: '#6b7280' }}>
-              Добро пожаловать! Мы вас ждали
-            </p>
-          </div>
-
           {/* Форма входа */}
-          <div className="rounded-lg shadow-md p-8" style={{ backgroundColor: '#ffffff', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1)' }}>
+          <div className="glass-effect rounded-3xl shadow-2xl p-8 sm:p-10 border border-white/20">
+            {/* Логотип внутри формы */}
+            <div className="text-center mb-6">
+              <div className="inline-flex items-center justify-center w-16 h-16 bg-blue-600 rounded-2xl shadow-2xl transform hover:scale-105 transition-transform duration-300">
+                <svg className="w-10 h-10 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16V6a1 1 0 00-1-1H4a1 1 0 00-1 1v10a1 1 0 001 1h1m8-1a1 1 0 01-1 1H9m4-1V8a1 1 0 011-1h2.586a1 1 0 01.707.293l3.414 3.414a1 1 0 01.293.707V16a1 1 0 01-1 1h-1m-6-1a1 1 0 001 1h1M5 17a2 2 0 104 0m-4 0a2 2 0 114 0m6 0a2 2 0 104 0m-4 0a2 2 0 114 0" />
+                </svg>
+              </div>
+            </div>
+
+            {/* Заголовок внутри формы */}
+            <div className="text-center mb-8">
+              <h1 className="text-3xl mb-2 text-white drop-shadow-2xl tracking-tight">
+                StoreCourier
+              </h1>
+              <p className="text-base text-white/70">
+                Система управления доставкой
+              </p>
+            </div>
+
             <form onSubmit={handleSubmit} className="space-y-6">
               
               {/* Ошибки */}
@@ -82,31 +100,41 @@ export default function CourierLoginPage() {
 
               {/* Поле номера телефона */}
               <div>
-                <label htmlFor="phoneNumber" className="block text-sm font-medium mb-2" style={{ color: '#374151' }}>
+                <label htmlFor="phoneNumber" className="block text-sm mb-3 text-white">
                   Номер телефона
                 </label>
-                <input
-                  id="phoneNumber"
-                  type="tel"
-                  value={phoneNumber}
-                  onChange={(e) => setPhoneNumber(e.target.value)}
-                  placeholder="+996555123456"
-                  required
-                  className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
-                  style={{ 
-                    backgroundColor: '#ffffff',
-                    borderColor: '#d1d5db',
-                    color: '#1a1a1a'
-                  }}
-                />
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-5 flex items-center pointer-events-none">
+                    <svg className="w-5 h-5 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
+                    </svg>
+                  </div>
+                  <input
+                    id="phoneNumber"
+                    type="tel"
+                    value={phoneNumber}
+                    onChange={(e) => setPhoneNumber(e.target.value)}
+                    placeholder="+996555123456"
+                    required
+                    className="w-full pl-14 pr-5 py-4 border-2 rounded-2xl focus:outline-none focus:ring-4 focus:ring-blue-500/15 focus:border-blue-500 transition-all duration-200 bg-gray-700 text-white text-base placeholder-gray-400"
+                    style={{ 
+                      borderColor: '#4b5563',
+                    }}
+                  />
+                </div>
               </div>
 
               {/* Поле пароля */}
               <div>
-                <label htmlFor="password" className="block text-sm font-medium mb-2" style={{ color: '#374151' }}>
+                <label htmlFor="password" className="block text-sm mb-3 text-white">
                   Пароль
                 </label>
                 <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-5 flex items-center pointer-events-none">
+                    <svg className="w-5 h-5 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                    </svg>
+                  </div>
                   <input
                     id="password"
                     type={showPassword ? 'text' : 'password'}
@@ -114,20 +142,15 @@ export default function CourierLoginPage() {
                     onChange={(e) => setPassword(e.target.value)}
                     placeholder="••••••••••••••••"
                     required
-                    className="w-full px-3 py-2 pr-12 border rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
+                    className="w-full pl-14 pr-14 py-4 border-2 rounded-2xl focus:outline-none focus:ring-4 focus:ring-blue-500/15 focus:border-blue-500 transition-all duration-200 bg-gray-700 text-white text-base placeholder-gray-400"
                     style={{ 
-                      backgroundColor: '#ffffff',
-                      borderColor: '#d1d5db',
-                      color: '#1a1a1a'
+                      borderColor: '#4b5563',
                     }}
                   />
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-1/2 transform -translate-y-1/2 transition-colors"
-                    style={{ color: '#9ca3af' }}
-                    onMouseEnter={(e) => e.currentTarget.style.color = '#6b7280'}
-                    onMouseLeave={(e) => e.currentTarget.style.color = '#9ca3af'}
+                    className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-300 transition-colors"
                   >
                     {showPassword ? (
                       <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -147,41 +170,43 @@ export default function CourierLoginPage() {
               <button
                 type="submit"
                 disabled={isLoading}
-                className="w-full text-lg font-semibold py-3 px-4 rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                className="w-full text-lg py-5 px-4 rounded-2xl transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed relative overflow-hidden group shadow-lg hover:shadow-xl hover:scale-[1.02]"
                 style={{
-                  backgroundColor: isLoading ? '#d1d5db' : '#ff6b35',
+                  backgroundColor: isLoading ? '#9ca3af' : '#2563eb',
                   color: '#ffffff',
                   border: 'none'
                 }}
-                onMouseEnter={(e) => {
-                  if (!isLoading) {
-                    e.currentTarget.style.backgroundColor = '#e55a2b'
-                  }
-                }}
-                onMouseLeave={(e) => {
-                  if (!isLoading) {
-                    e.currentTarget.style.backgroundColor = '#ff6b35'
-                  }
-                }}
               >
-                {isLoading ? (
-                  <div className="flex items-center justify-center">
-                    <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" fill="none" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                    </svg>
-                    Вход...
-                  </div>
-                ) : (
-                  'Войти'
-                )}
+                <span className="relative z-10 flex items-center justify-center">
+                  {isLoading ? (
+                    <>
+                      <svg className="animate-spin -ml-1 mr-3 h-6 w-6 text-white" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      </svg>
+                      Вход в систему...
+                    </>
+                  ) : (
+                    <>
+                      Войти в систему
+                      <svg className="w-6 h-6 ml-2 group-hover:translate-x-2 transition-transform duration-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M13 7l5 5m0 0l-5 5m5-5H6" />
+                      </svg>
+                    </>
+                  )}
+                </span>
+                <div className="absolute inset-0 bg-gradient-to-r from-white/25 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+                <div className="absolute inset-0 bg-gradient-to-t from-black/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
               </button>
-
-
             </form>
+
+            {/* Футер формы */}
+            <div className="mt-6 text-center">
+              <p className="text-sm text-white/70">
+                Нужна помощь? Обратитесь к администратору
+              </p>
+            </div>
           </div>
-
-
         </div>
       </div>
     </div>

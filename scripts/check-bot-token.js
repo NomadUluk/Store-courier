@@ -9,7 +9,7 @@ async function checkBotToken() {
 
     // Получаем токен из базы данных
     const tokenSetting = await prisma.setting.findUnique({
-      where: { key: 'TELEGRAM_BOT_TOKEN' }
+      where: { key: 'COURIER_BOT_TOKEN' }
     })
 
     if (!tokenSetting || !tokenSetting.value) {

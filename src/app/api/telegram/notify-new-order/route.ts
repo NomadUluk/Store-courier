@@ -3,6 +3,21 @@ import { prisma } from '@/lib/prisma'
 import { sendNewOrderNotification } from '@/lib/telegram'
 import type { ApiResponse } from '@/types'
 
+// Кэш для отслеживания отправленных уведомлений (ID заказа -> timestamp)
+const notificationCache = new Map<string, number>()
+const NOTIFICATION_COOLDOWN = 120000 // 120 секунд (2 минуты) cooldown между уведомлениями для одного заказа
+
+// Очистка старых записей из кэша каждые 5 минут
+setInterval(() => {
+  const now = Date.now()
+  for (const [orderId, timestamp] of notificationCache.entries()) {
+    if (now - timestamp > NOTIFICATION_COOLDOWN * 2) { // Удаляем записи старше 4 минут
+      notificationCache.delete(orderId)
+      console.log(`🧹 Удален из кэша заказ: ${orderId.slice(-8)}`)
+    }
+  }
+}, 300000) // 5 минут
+
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
@@ -15,6 +30,23 @@ export async function POST(request: NextRequest) {
         success: false,
         error: 'Order ID не предоставлен'
       }, { status: 400 })
+    }
+
+    // Проверяем, не отправляли ли мы уже уведомление для этого заказа недавно
+    const lastNotificationTime = notificationCache.get(orderId)
+    if (lastNotificationTime) {
+      const timeSinceLastNotification = Date.now() - lastNotificationTime
+      if (timeSinceLastNotification < NOTIFICATION_COOLDOWN) {
+        console.log(`⏸️ API: Уведомление для заказа ${orderId.slice(-8)} уже было отправлено ${Math.round(timeSinceLastNotification / 1000)} секунд назад. Пропускаем.`)
+        return NextResponse.json<ApiResponse>({
+          success: true,
+          message: 'Уведомление уже было отправлено недавно'
+        })
+      } else {
+        console.log(`⏰ API: Cooldown истек для заказа ${orderId.slice(-8)} (прошло ${Math.round(timeSinceLastNotification / 1000)} секунд), разрешаем повторную отправку`)
+      }
+    } else {
+      console.log(`✨ API: Первое уведомление для заказа ${orderId.slice(-8)}`)
     }
 
     // Получаем заказ из базы данных
@@ -60,6 +92,11 @@ export async function POST(request: NextRequest) {
       // Отправляем уведомление в Telegram с таймаутом
       await sendNewOrderNotification(order)
       console.log('API: Уведомление отправлено успешно')
+      
+      // Сохраняем timestamp отправки в кэш
+      const timestamp = Date.now()
+      notificationCache.set(orderId, timestamp)
+      console.log(`API: Timestamp уведомления сохранен в кэш для заказа ${orderId.slice(-8)}, размер кэша: ${notificationCache.size}`)
     } catch (telegramError) {
       console.error('API: Ошибка отправки Telegram уведомления:', telegramError)
       // Не прерываем выполнение, просто логируем ошибку

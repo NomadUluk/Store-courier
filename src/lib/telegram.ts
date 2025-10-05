@@ -5,6 +5,21 @@ import { prisma } from '@/lib/prisma'
 import { getBot } from '@/lib/telegram-bot'
 
 
+// Функция для проверки, можно ли использовать URL в Telegram inline keyboard
+function isValidTelegramUrl(url: string): boolean {
+  // Telegram не поддерживает localhost, 127.0.0.1, 192.168.x.x и другие локальные адреса
+  const invalidPatterns = [
+    /localhost/i,
+    /127\.0\.0\.1/,
+    /192\.168\./,
+    /10\.\d+\.\d+\.\d+/,
+    /172\.(1[6-9]|2[0-9]|3[0-1])\./,
+    /^http:\/\/(?!.*\.)/  // HTTP без домена
+  ]
+  
+  return !invalidPatterns.some(pattern => pattern.test(url))
+}
+
 // Функция для проверки длины сообщения
 function checkMessageLength(message: string, keyboard?: object): boolean {
   const messageLength = message.length
@@ -60,17 +75,25 @@ ${order.orderItems.map(item =>
 
     console.log('Telegram: Отправляем сообщение курьерам...')
     
-    // Создаем клавиатуру
+    // Создаем клавиатуру только если URL валидный для Telegram
     const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
-    const keyboard = {
-      inline_keyboard: [
-        [
-          {
-            text: '📋 Посмотреть заказ',
-            url: `${baseUrl}/courier/dashboard?order=${order.id}`
-          }
+    const isUrlValid = isValidTelegramUrl(baseUrl)
+    
+    let keyboard = null
+    if (isUrlValid) {
+      keyboard = {
+        inline_keyboard: [
+          [
+            {
+              text: '📋 Посмотреть заказ',
+              url: `${baseUrl}/courier/dashboard?order=${order.id}`
+            }
+          ]
         ]
-      ]
+      }
+      console.log(`Telegram: Клавиатура с URL создана: ${baseUrl}`)
+    } else {
+      console.log(`⚠️ Telegram: URL "${baseUrl}" не поддерживается Telegram. Отправляем без кнопок.`)
     }
     
     // Отправляем уведомления всем курьерам
@@ -85,9 +108,9 @@ ${order.orderItems.map(item =>
           continue
         }
 
-        // Проверяем длину сообщения
-        if (!checkMessageLength(message, keyboard)) {
-          console.warn('Telegram: Отправляем сообщение без кнопки из-за превышения лимита')
+        // Проверяем длину сообщения и отправляем
+        if (!keyboard || !checkMessageLength(message, keyboard)) {
+          // Отправляем без кнопки
           const sendMessagePromise = bot.sendMessage(chatId, message, {
             parse_mode: 'Markdown'
           })
@@ -98,7 +121,7 @@ ${order.orderItems.map(item =>
           
           await Promise.race([sendMessagePromise, timeoutPromise])
         } else {
-          // Создаем Promise с таймаутом
+          // Отправляем с кнопкой
           const sendMessagePromise = bot.sendMessage(chatId, message, {
             parse_mode: 'Markdown',
             reply_markup: keyboard
@@ -108,7 +131,6 @@ ${order.orderItems.map(item =>
             setTimeout(() => reject(new Error('Telegram API timeout')), 10000)
           })
           
-          // Отправляем сообщение с таймаутом
           await Promise.race([sendMessagePromise, timeoutPromise])
         }
 
@@ -153,7 +175,8 @@ export async function sendOrderStatusUpdateNotification(order: OrderWithDetails,
 
     const chatId = await getCourierChatId(order.courierId)
     if (!chatId) {
-      console.log(`Telegram: Chat ID не найден для курьера ${order.courierId}`)
+      console.log(`Telegram: Chat ID не найден для курьера ${order.courierId} (${order.courier?.fullname || 'Неизвестный курьер'})`)
+      console.log('Telegram: Курьер должен зарегистрироваться в боте через команду /start')
       return
     }
     
@@ -178,33 +201,47 @@ ${order.customerComment ? `💬 *Комментарий:* ${order.customerCommen
 
 🚚 *Курьер:* ${order.courier ? order.courier.fullname : 'Не назначен'}`
       
-      // Создаем клавиатуру
+      // Создаем клавиатуру только если URL валидный
       const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
-      const keyboard = {
-        inline_keyboard: [
-          [
-            {
-              text: '📦 Мои заказы',
-              url: `${baseUrl}/courier/dashboard?tab=my`
-            }
+      const isUrlValid = isValidTelegramUrl(baseUrl)
+      
+      let keyboard = null
+      if (isUrlValid) {
+        keyboard = {
+          inline_keyboard: [
+            [
+              {
+                text: '📦 Мои заказы',
+                url: `${baseUrl}/courier/dashboard?tab=my`
+              }
+            ]
           ]
-        ]
+        }
       }
       
-      // Проверяем длину сообщения
-      if (!checkMessageLength(message, keyboard)) {
-        console.warn('Telegram: Отправляем сообщение без кнопки из-за превышения лимита')
+      // Проверяем длину сообщения и отправляем
+      try {
+        if (!keyboard || !checkMessageLength(message, keyboard)) {
+          await bot.sendMessage(chatId, message, {
+            parse_mode: 'Markdown'
+          })
+          console.log(`Telegram: Уведомление отправлено курьеру ${order.courier?.fullname} (${chatId})`)
+          return
+        }
+        
         await bot.sendMessage(chatId, message, {
-          parse_mode: 'Markdown'
+          parse_mode: 'Markdown',
+          reply_markup: keyboard
         })
+        console.log(`Telegram: Уведомление с кнопкой отправлено курьеру ${order.courier?.fullname} (${chatId})`)
+        return
+      } catch (error: any) {
+        console.error(`Telegram: Ошибка отправки уведомления курьеру ${order.courier?.fullname} (${chatId}):`, error.message)
+        if (error.message.includes('chat not found')) {
+          console.log(`Telegram: Chat ID ${chatId} не найден. Курьер должен зарегистрироваться в боте.`)
+        }
         return
       }
-      
-      await bot.sendMessage(chatId, message, {
-        parse_mode: 'Markdown',
-        reply_markup: keyboard
-      })
-      return
     }
 
     // Определяем эмодзи для статуса
@@ -255,37 +292,48 @@ ${order.cancelComment ? `💬 *Причина отмены:* ${order.cancelComme
 ${order.courier ? `🚚 *Курьер:* ${order.courier.fullname}` : ''}`
     }
 
-    // Создаем клавиатуру для активных заказов
+    // Создаем клавиатуру для активных заказов только если URL валидный
     let keyboard = null
     if (order.status === 'ENROUTE') {
       const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
-      keyboard = {
-        inline_keyboard: [
-          [
-            {
-              text: '📦 Мои заказы',
-              url: `${baseUrl}/courier/dashboard?tab=my`
-            }
+      const isUrlValid = isValidTelegramUrl(baseUrl)
+      
+      if (isUrlValid) {
+        keyboard = {
+          inline_keyboard: [
+            [
+              {
+                text: '📦 Мои заказы',
+                url: `${baseUrl}/courier/dashboard?tab=my`
+              }
+            ]
           ]
-        ]
+        }
       }
     }
 
-    // Проверяем длину сообщения
-    if (keyboard && !checkMessageLength(message, keyboard)) {
-      console.warn('Telegram: Отправляем сообщение без кнопки из-за превышения лимита')
+    // Проверяем длину сообщения и отправляем
+    try {
+      if (!keyboard || !checkMessageLength(message, keyboard)) {
+        await bot.sendMessage(chatId, message, {
+          parse_mode: 'Markdown'
+        })
+        console.log(`Telegram: Уведомление об обновлении статуса отправлено курьеру ${order.courier?.fullname} (${chatId})`)
+        return
+      }
+
       await bot.sendMessage(chatId, message, {
-        parse_mode: 'Markdown'
+        parse_mode: 'Markdown',
+        reply_markup: keyboard
       })
+      console.log(`Telegram: Уведомление об обновлении статуса с кнопкой отправлено курьеру ${order.courier?.fullname} (${chatId})`)
+    } catch (error: any) {
+      console.error(`Telegram: Ошибка отправки уведомления об обновлении статуса курьеру ${order.courier?.fullname} (${chatId}):`, error.message)
+      if (error.message.includes('chat not found')) {
+        console.log(`Telegram: Chat ID ${chatId} не найден. Курьер должен зарегистрироваться в боте.`)
+      }
       return
     }
-
-    await bot.sendMessage(chatId, message, {
-      parse_mode: 'Markdown',
-      reply_markup: keyboard
-    })
-
-    console.log('Telegram уведомление об обновлении статуса отправлено для заказа:', order.id)
   } catch (error) {
     console.error('Ошибка отправки Telegram уведомления об обновлении статуса:', error)
   }

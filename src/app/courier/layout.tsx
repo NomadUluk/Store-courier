@@ -1,13 +1,12 @@
 'use client'
 
 import { usePathname } from 'next/navigation'
-import { ThemeProvider } from '@/contexts/ThemeContext'
 import { LanguageProvider, useLanguage } from '@/contexts/LanguageContext'
-import { SimpleThemeToggle } from '@/components/ui/SimpleThemeToggle'
 import { SimpleLanguageToggle } from '@/components/ui/SimpleLanguageToggle'
 import { TruckIcon, UserIcon, ArrowRightOnRectangleIcon } from '@heroicons/react/24/outline'
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { ProfileDropdown } from '@/components/courier/ProfileDropdown'
+import { SearchBar } from '@/components/courier/SearchBar'
 
 function CourierLayoutContent({
   children,
@@ -18,6 +17,55 @@ function CourierLayoutContent({
   const { t } = useLanguage()
   const [isProfileDropdownOpen, setIsProfileDropdownOpen] = useState(false)
   const profileButtonRef = useRef<HTMLButtonElement>(null)
+  const [courierName, setCourierName] = useState<string>('')
+  const [lastUpdate, setLastUpdate] = useState<Date>(new Date())
+  const [secondsUntilUpdate, setSecondsUntilUpdate] = useState<number>(10)
+  const [connectionStatus, setConnectionStatus] = useState<'connected' | 'disconnected' | 'unknown'>('unknown')
+  
+  // Загружаем имя курьера при монтировании компонента
+  useEffect(() => {
+    const fetchCourierProfile = async () => {
+      try {
+        const response = await fetch('/api/courier/profile')
+        const data = await response.json()
+        
+        if (data.success && data.data.fullname) {
+          setCourierName(data.data.fullname)
+        }
+      } catch (error) {
+        console.error('Error fetching courier profile:', error)
+      }
+    }
+    
+    // Загружаем профиль только если не на странице логина
+    if (pathname !== '/courier/login') {
+      fetchCourierProfile()
+    }
+  }, [pathname])
+
+  // Отсчет секунд до обновления
+  useEffect(() => {
+    const countdown = setInterval(() => {
+      setSecondsUntilUpdate(prev => {
+        if (prev <= 1) {
+          return 5 // Сбрасываем на 5 секунд
+        }
+        return prev - 1
+      })
+    }, 1000) // Каждую секунду
+
+    return () => clearInterval(countdown)
+  }, [])
+
+  // Обновляем время каждые 5 секунд
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setLastUpdate(new Date())
+      setConnectionStatus('connected')
+    }, 5000)
+
+    return () => clearInterval(interval)
+  }, [])
   
   // Для страницы логина не показываем навигацию
   if (pathname === '/courier/login') {
@@ -25,44 +73,70 @@ function CourierLayoutContent({
   }
 
   return (
-    <div className="h-screen flex flex-col" style={{ backgroundColor: 'var(--secondary)' }}>
+    <div className="h-screen flex flex-col" style={{ backgroundColor: '#1a1f2e' }}>
       {/* Навигационная панель */}
-      <nav style={{ backgroundColor: 'var(--navbar-bg)', borderColor: 'var(--border)' }} className="shadow-sm border-b">
-        <div className="w-full px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-16">
-            <div className="flex items-center space-x-4">
-              {/* Логотип */}
-              <div className="flex items-center">
-                <div className="w-8 h-8 bg-gradient-to-br from-orange-400 to-orange-600 rounded-lg flex items-center justify-center">
-                  <TruckIcon className="w-5 h-5 text-white" />
-                </div>
-                <h1 className="ml-3 text-xl font-bold" style={{ color: 'var(--foreground)' }}>
-                  Store<span className="text-primary">Courier</span>
-                </h1>
+      <nav style={{ 
+        backgroundColor: 'var(--navbar-bg)', 
+        borderColor: 'var(--border)',
+        boxShadow: 'var(--shadow-md)'
+      }} className="border-b relative z-50">
+        <div className="w-full px-3 sm:px-6 lg:px-8">
+          <div className="flex justify-between items-center h-14 sm:h-16 lg:h-20 gap-2 sm:gap-4">
+            {/* Логотип */}
+            <div className="flex items-center group cursor-pointer flex-shrink-0">
+              <div className="w-8 h-8 sm:w-10 sm:h-10 lg:w-12 lg:h-12 bg-gradient-to-br from-orange-500 via-orange-600 to-red-600 rounded-lg sm:rounded-xl lg:rounded-2xl flex items-center justify-center shadow-xl group-hover:scale-105 transition-all duration-300">
+                <TruckIcon className="w-4 h-4 sm:w-6 sm:h-6 lg:w-7 lg:h-7 text-white" />
               </div>
+              <h1 className="ml-1 sm:ml-2 lg:ml-4 text-sm sm:text-lg lg:text-2xl tracking-tight" style={{ color: 'var(--foreground)' }}>
+                Store<span className="gradient-text hidden sm:inline">Courier</span>
+              </h1>
+            </div>
+
+            {/* Поиск посередине - показываем только на странице dashboard */}
+            <div className="flex-1 flex justify-center max-w-xs sm:max-w-md lg:max-w-none">
+              <SearchBar />
             </div>
             
-            <div className="flex items-center space-x-3">
+            <div className="flex items-center space-x-1 sm:space-x-1.5 lg:space-x-3 flex-shrink-0">
               {/* Переключатель языка */}
               <SimpleLanguageToggle />
-              
-              {/* Переключатель темы */}
-              <SimpleThemeToggle />
-
 
               {/* Профиль курьера */}
-              <div className="relative">
+              <div className="relative z-[100]">
                 <button 
                   ref={profileButtonRef}
                   onClick={() => setIsProfileDropdownOpen(!isProfileDropdownOpen)}
-                  className="flex items-center space-x-3 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg p-2 transition-colors duration-200"
+                  className="flex items-center space-x-1 sm:space-x-2 lg:space-x-3 hover:bg-gray-50 dark:hover:bg-gray-700/50 rounded-lg sm:rounded-xl lg:rounded-2xl px-1.5 py-1.5 sm:px-2 sm:py-2 lg:px-4 lg:py-3 transition-all duration-200 border border-transparent hover:border-gray-200 dark:hover:border-gray-700"
+                  style={{ backgroundColor: 'var(--background-subtle)' }}
                 >
-                <div className="text-right">
-                  <p className="text-sm font-medium" style={{ color: 'var(--foreground)' }}>{t('courier')}</p>
-                  <p className="text-xs" style={{ color: 'var(--muted)' }}>{t('activeStatus')}</p>
+                <div className="text-right hidden lg:block">
+                  <p className="text-sm font-semibold tracking-tight" style={{ color: 'var(--foreground)' }}>
+                    {courierName ? courierName : (
+                      <span className="opacity-50">{t('courier')}</span>
+                    )}
+                  </p>
+                  <div className="flex items-center justify-end space-x-1.5">
+                    <div className={`w-2 h-2 rounded-full ${
+                      connectionStatus === 'connected' 
+                        ? 'bg-green-500 animate-pulse shadow-lg shadow-green-500/50' 
+                        : connectionStatus === 'disconnected'
+                        ? 'bg-red-500 shadow-lg shadow-red-500/50'
+                        : 'bg-yellow-500 shadow-lg shadow-yellow-500/50'
+                    }`}></div>
+                    <p className="text-xs" style={{ color: 'var(--muted)' }}>{t('activeStatus')}</p>
+                    <span className="text-xs font-medium" style={{ color: 'var(--foreground)' }}>
+                      {lastUpdate.toLocaleTimeString('ru-RU', { 
+                        hour: '2-digit', 
+                        minute: '2-digit'
+                      })}
+                    </span>
+                    <span className="px-1.5 py-0.5 rounded text-xs bg-gray-700 text-gray-300">
+                      {secondsUntilUpdate}с
+                    </span>
+                  </div>
                 </div>
-                  <div className="w-8 h-8 bg-gray-300 rounded-full flex items-center justify-center">
-                    <UserIcon className="w-5 h-5 text-gray-600" />
+                  <div className="w-7 h-7 sm:w-9 sm:h-9 lg:w-10 lg:h-10 bg-gradient-to-br from-orange-400 via-orange-500 to-red-500 rounded-md sm:rounded-lg lg:rounded-xl flex items-center justify-center shadow-lg">
+                    <UserIcon className="w-3 h-3 sm:w-5 sm:h-5 text-white" />
                   </div>
                 </button>
 
@@ -79,10 +153,15 @@ function CourierLayoutContent({
                   await fetch('/api/courier/auth/logout', { method: 'POST' })
                   window.location.href = '/courier/login'
                 }}
-                className="flex items-center gap-2 rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 transition-colors duration-200"
+                className="flex items-center gap-1 sm:gap-1.5 lg:gap-2 rounded-lg sm:rounded-xl lg:rounded-2xl border-2 px-1.5 py-1.5 sm:px-2.5 sm:py-2 lg:px-5 lg:py-3 text-xs sm:text-sm font-semibold shadow-sm hover:shadow-lg transition-all duration-200 hover:-translate-y-1 hover:scale-105"
+                style={{
+                  borderColor: 'var(--border)',
+                  color: 'var(--foreground)',
+                  backgroundColor: 'var(--card-bg)'
+                }}
               >
-                <ArrowRightOnRectangleIcon className="w-5 h-5 text-gray-600" />
-                <span>{t('logout')}</span>
+                <ArrowRightOnRectangleIcon className="w-3 h-3 sm:w-5 sm:h-5" />
+                <span className="hidden lg:inline">{t('logout')}</span>
               </button>
             </div>
           </div>
@@ -90,7 +169,7 @@ function CourierLayoutContent({
       </nav>
 
       {/* Основной контент */}
-      <main className="flex-1">
+      <main className="flex-1 overflow-hidden">
         {children}
       </main>
 
@@ -110,7 +189,11 @@ export default function CourierLayout({
   )
 }
 
-function CourierLayoutWrapper({ children }: { children: React.ReactNode }) {
+function CourierLayoutWrapper({ 
+  children
+}: { 
+  children: React.ReactNode
+}) {
   const pathname = usePathname()
   
   // Для страницы логина не применяем тему - только языковой контекст
@@ -124,14 +207,12 @@ function CourierLayoutWrapper({ children }: { children: React.ReactNode }) {
     )
   }
 
-  // Для остальных страниц применяем и тему, и язык
+  // Для остальных страниц применяем только язык
   return (
-    <ThemeProvider>
-      <LanguageProvider>
-        <CourierLayoutContent>
-          {children}
-        </CourierLayoutContent>
-      </LanguageProvider>
-    </ThemeProvider>
+    <LanguageProvider>
+      <CourierLayoutContent>
+        {children}
+      </CourierLayoutContent>
+    </LanguageProvider>
   )
 }

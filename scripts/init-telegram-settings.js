@@ -8,7 +8,7 @@ async function initTelegramSettings() {
 
     // Проверяем, есть ли уже настройки
     const existingToken = await prisma.setting.findUnique({
-      where: { key: 'TELEGRAM_BOT_TOKEN' }
+      where: { key: 'COURIER_BOT_TOKEN' }
     })
 
     const existingChatIds = await prisma.setting.findUnique({
@@ -18,13 +18,13 @@ async function initTelegramSettings() {
     if (!existingToken) {
       await prisma.setting.create({
         data: {
-          key: 'TELEGRAM_BOT_TOKEN',
+          key: 'COURIER_BOT_TOKEN',
           value: ''
         }
       })
-      console.log('✅ Создана запись для TELEGRAM_BOT_TOKEN')
+      console.log('✅ Создана запись для COURIER_BOT_TOKEN')
     } else {
-      console.log('ℹ️  TELEGRAM_BOT_TOKEN уже существует')
+      console.log('ℹ️  COURIER_BOT_TOKEN уже существует')
     }
 
     if (!existingChatIds) {
@@ -43,14 +43,14 @@ async function initTelegramSettings() {
     const settings = await prisma.setting.findMany({
       where: {
         key: {
-          in: ['TELEGRAM_BOT_TOKEN', 'COURIER_CHAT_ID']
+          in: ['COURIER_BOT_TOKEN', 'COURIER_CHAT_ID']
         }
       }
     })
 
     console.log('\n📋 Текущие настройки Telegram:')
     settings.forEach(setting => {
-      if (setting.key === 'TELEGRAM_BOT_TOKEN') {
+      if (setting.key === 'COURIER_BOT_TOKEN') {
         console.log(`  ${setting.key}: ${setting.value ? `${setting.value.slice(0, 10)}...` : 'не установлен'}`)
       } else {
         console.log(`  ${setting.key}: ${setting.value}`)

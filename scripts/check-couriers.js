@@ -35,14 +35,14 @@ const testCourier = await prisma.user.create({
     const telegramSettings = await prisma.setting.findMany({
       where: {
         key: {
-          in: ['TELEGRAM_BOT_TOKEN', 'TELEGRAM_CHAT_ID']
+          in: ['COURIER_BOT_TOKEN', 'COURIER_CHAT_ID']
         }
       }
     })
 
     console.log('\n📱 Настройки Telegram:')
     telegramSettings.forEach(setting => {
-      if (setting.key === 'TELEGRAM_BOT_TOKEN') {
+      if (setting.key === 'COURIER_BOT_TOKEN') {
         console.log(`  ${setting.key}: ${setting.value ? 'установлен' : 'не установлен'}`)
       } else {
         console.log(`  ${setting.key}: ${setting.value}`)

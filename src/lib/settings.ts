@@ -31,7 +31,7 @@ export async function setSetting(key: string, value: string): Promise<boolean> {
 // Функция для получения токена Telegram бота
 export async function getTelegramBotToken(): Promise<string | null> {
   // Получаем токен только из базы данных
-  return await getSetting('TELEGRAM_BOT_TOKEN')
+  return await getSetting('COURIER_BOT_TOKEN')
 }
 
 // Функция для получения chat_id курьеров

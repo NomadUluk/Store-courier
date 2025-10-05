@@ -6,7 +6,7 @@ export async function GET(request: NextRequest) {
   try {
     console.log('API: Получение настроек Telegram...')
 
-    const botToken = await getSetting('TELEGRAM_BOT_TOKEN')
+    const botToken = await getSetting('COURIER_BOT_TOKEN')
     const chatIds = await getCourierChatIds()
 
     return NextResponse.json<ApiResponse>({
@@ -51,7 +51,7 @@ export async function POST(request: NextRequest) {
       }, { status: 400 })
     }
 
-    const success = await setSetting('TELEGRAM_BOT_TOKEN', botToken.trim())
+    const success = await setSetting('COURIER_BOT_TOKEN', botToken.trim())
     
     if (success) {
       console.log('✅ Токен Telegram бота сохранен')
