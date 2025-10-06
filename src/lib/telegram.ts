@@ -1,5 +1,5 @@
 import TelegramBot from 'node-telegram-bot-api'
-import type { OrderWithDetails } from '@/types'
+import type { OrderWithDetails, TelegramRegistrationResult } from '@/types'
 import { getCourierChatId, setCourierChatId } from '@/lib/settings'
 import { prisma } from '@/lib/prisma'
 import { getBot } from '@/lib/telegram-bot'
@@ -426,7 +426,7 @@ export async function findCourierByPhone(phoneNumber: string) {
 }
 
 // Функция для обработки регистрации курьера в Telegram
-export async function registerCourierInTelegram(chatId: string, phoneNumber: string) {
+export async function registerCourierInTelegram(chatId: string, phoneNumber: string): Promise<TelegramRegistrationResult> {
   try {
     console.log(`Telegram: Попытка регистрации курьера. Chat ID: ${chatId}, Phone: ${phoneNumber}`)
     
@@ -460,11 +460,23 @@ export async function registerCourierInTelegram(chatId: string, phoneNumber: str
       console.log(`Telegram: Курьер ${courier.fullname} (ID: ${courier.id}) успешно зарегистрирован с Chat ID: ${chatId}`)
       return {
         success: true,
-        message: `✅ Добро пожаловать, ${courier.fullname}! Вы успешно зарегистрированы в системе уведомлений. Теперь вы будете получать уведомления о новых заказах.`,
+        message: `✅ Добро пожаловать, ${courier.fullname}! 
+
+Вы успешно зарегистрированы в системе уведомлений. Теперь вы будете получать уведомления о новых заказах.
+
+💻 Для просмотра всех заказов и управления ими используйте веб-сайт:`,
         data: {
           courierId: courier.id,
           courierName: courier.fullname,
           chatId: chatId
+        },
+        keyboard: {
+          inline_keyboard: [[
+            {
+              text: '🌐 Войти на сайт',
+              url: `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/courier/login`
+            }
+          ]]
         }
       }
     } else {

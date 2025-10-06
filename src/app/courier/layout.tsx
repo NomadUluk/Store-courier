@@ -48,7 +48,7 @@ function CourierLayoutContent({
     const countdown = setInterval(() => {
       setSecondsUntilUpdate(prev => {
         if (prev <= 1) {
-          return 5 // Сбрасываем на 5 секунд
+          return 10 // Сбрасываем на 10 секунд
         }
         return prev - 1
       })
@@ -57,12 +57,12 @@ function CourierLayoutContent({
     return () => clearInterval(countdown)
   }, [])
 
-  // Обновляем время каждые 5 секунд
+  // Обновляем время каждые 10 секунд
   useEffect(() => {
     const interval = setInterval(() => {
       setLastUpdate(new Date())
       setConnectionStatus('connected')
-    }, 5000)
+    }, 10000)
 
     return () => clearInterval(interval)
   }, [])

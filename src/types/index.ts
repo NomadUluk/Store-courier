@@ -79,3 +79,23 @@ export interface OrderWithDetailsExtended extends ExtendedOrder {
     } 
   })[]
 }
+
+// Типы для Telegram
+export interface TelegramKeyboard {
+  inline_keyboard: Array<Array<{
+    text: string
+    url?: string
+    callback_data?: string
+  }>>
+}
+
+export interface TelegramRegistrationResult {
+  success: boolean
+  message: string
+  data?: {
+    courierId: string
+    courierName: string
+    chatId: string
+  }
+  keyboard?: TelegramKeyboard
+}

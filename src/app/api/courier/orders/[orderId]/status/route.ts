@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { verifyToken } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
-import { sendOrderStatusUpdateNotification, sendNewOrderNotification } from '@/lib/telegram'
+import { sendNotification } from '@/lib/notification-manager'
 import type { ApiResponse } from '@/types'
 import type { OrderStatus } from '@prisma/client'
+import type { NotificationRequest } from '@/lib/notification-manager'
 
 interface RouteParams {
   params: Promise<{
@@ -96,11 +97,26 @@ export async function PATCH(request: NextRequest, context: RouteParams) {
 
     // Отправляем уведомление в Telegram об изменении статуса
     try {
+      let notificationRequest: NotificationRequest | null = null
+      
       // Если статус изменился на COURIER_WAIT, отправляем уведомление о новом заказе
       if (status === 'COURIER_WAIT' && existingOrder.status !== 'COURIER_WAIT') {
-        await sendNewOrderNotification(updatedOrder)
+        notificationRequest = {
+          orderId: params.orderId,
+          type: 'NEW_ORDER'
+        }
       } else {
-        await sendOrderStatusUpdateNotification(updatedOrder, existingOrder.status)
+        // Отправляем уведомление об изменении статуса
+        notificationRequest = {
+          orderId: params.orderId,
+          type: 'STATUS_UPDATE',
+          oldStatus: existingOrder.status
+        }
+      }
+      
+      if (notificationRequest) {
+        const notificationResult = await sendNotification(request, notificationRequest)
+        console.log(`📨 Статус заказа ${params.orderId.slice(-8)}: ${notificationResult.message}`)
       }
     } catch (error) {
       console.error('Ошибка отправки Telegram уведомления:', error)

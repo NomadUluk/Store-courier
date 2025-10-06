@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { CompactOrderCard } from '@/components/courier/CompactOrderCard'
 import { MobileOrderCard } from '@/components/courier/MobileOrderCard'
@@ -13,6 +13,46 @@ import type { OrderWithDetails, OrderStatus, OrderItem, Product, Category, User 
 type TabType = 'available' | 'my' | 'completed' | 'canceled'
 type SortType = 'date-new' | 'date-old' | 'price-high' | 'price-low' | 'items-high' | 'items-low'
 type DateFilterType = 'all' | 'today' | 'yesterday' | 'week' | 'month'
+
+// Функции для работы с датами
+const formatDate = (date: Date): string => {
+  const day = date.getDate().toString().padStart(2, '0')
+  const month = (date.getMonth() + 1).toString().padStart(2, '0')
+  const year = date.getFullYear()
+  return `${day}.${month}.${year}`
+}
+
+const getTodayRange = (): string => {
+  const today = new Date()
+  const dateStr = formatDate(today)
+  return `${dateStr} 00:00-${dateStr} 23:59`
+}
+
+const getYesterdayRange = (): string => {
+  const yesterday = new Date()
+  yesterday.setDate(yesterday.getDate() - 1)
+  const dateStr = formatDate(yesterday)
+  return `${dateStr} 00:00-${dateStr} 23:59`
+}
+
+const getWeekRange = (): string => {
+  const today = new Date()
+  const dayOfWeek = today.getDay()
+  const monday = new Date(today)
+  monday.setDate(today.getDate() - (dayOfWeek === 0 ? 6 : dayOfWeek - 1))
+  const sunday = new Date(monday)
+  sunday.setDate(monday.getDate() + 6)
+  
+  return `${formatDate(monday)}-${formatDate(sunday)}`
+}
+
+const getMonthRange = (): string => {
+  const today = new Date()
+  const firstDay = new Date(today.getFullYear(), today.getMonth(), 1)
+  const lastDay = new Date(today.getFullYear(), today.getMonth() + 1, 0)
+  
+  return `${formatDate(firstDay)}-${formatDate(lastDay)}`
+}
 
 export default function CourierDashboard() {
   console.log('CourierDashboard: Компонент загружается')
@@ -74,6 +114,10 @@ export default function CourierDashboard() {
   const [isInitialized, setIsInitialized] = useState<boolean>(false)
   const [notifiedOrderIds, setNotifiedOrderIds] = useState<Set<string>>(new Set()) // Отслеживаем заказы, для которых уже отправлены уведомления
   
+  // Ref'ы для стабильного доступа к актуальным значениям
+  const previousOrderIdsRef = useRef<Set<string>>(new Set())
+  const notifiedOrderIdsRef = useRef<Set<string>>(new Set())
+  
   // Состояние для эффекта свечения карточек
   const [glowingOrders, setGlowingOrders] = useState<Set<string>>(new Set())
   
@@ -110,22 +154,31 @@ export default function CourierDashboard() {
     return () => window.removeEventListener('resize', checkScreenSize)
   }, [])
 
+  // Синхронизируем ref'ы с state
+  useEffect(() => {
+    previousOrderIdsRef.current = previousOrderIds
+  }, [previousOrderIds])
+
+  useEffect(() => {
+    notifiedOrderIdsRef.current = notifiedOrderIds
+  }, [notifiedOrderIds])
+
   // Опции для dropdown'ов
   const sortOptions = [
-    { value: 'date-new', label: 'Сначала новые' },
-    { value: 'date-old', label: 'Сначала старые' },
-    { value: 'price-high', label: 'Цена: по убыванию' },
-    { value: 'price-low', label: 'Цена: по возрастанию' },
-    { value: 'items-high', label: 'Товаров: больше' },
-    { value: 'items-low', label: 'Товаров: меньше' }
+    { value: 'date-new', label: t('sortNewest') },
+    { value: 'date-old', label: t('sortOldest') },
+    { value: 'price-high', label: t('sortPriceHigh') },
+    { value: 'price-low', label: t('sortPriceLow') },
+    { value: 'items-high', label: t('sortItemsHigh') },
+    { value: 'items-low', label: t('sortItemsLow') }
   ]
 
   const dateFilterOptions = [
-    { value: 'all', label: 'Все время' },
-    { value: 'today', label: 'Сегодня' },
-    { value: 'yesterday', label: 'Вчера' },
-    { value: 'week', label: 'За неделю' },
-    { value: 'month', label: 'За месяц' }
+    { value: 'all', label: t('allTime') },
+    { value: 'today', label: t('today') },
+    { value: 'yesterday', label: t('yesterday') },
+    { value: 'week', label: t('thisWeek') },
+    { value: 'month', label: t('thisMonth') }
   ]
 
   // Функция для рендеринга карточек заказов
@@ -222,8 +275,11 @@ export default function CourierDashboard() {
     return null
   }, [orders, currentCourierId])
 
-  // Функция для проверки счетчика и получения новых заказов
-  const checkForNewOrders = useCallback(async () => {
+
+  // Объединенная функция для получения заказов и проверки новых
+  const fetchOrdersAndCheckNew = useCallback(async (showLoading = true) => {
+    if (showLoading) setIsLoading(true)
+    
     try {
       // Добавляем обработку ошибок расширений браузера
       if (typeof window !== 'undefined') {
@@ -236,137 +292,6 @@ export default function CourierDashboard() {
         })
       }
       
-      // Получаем ВСЕ текущие доступные заказы
-      const ordersResponse = await fetch('/api/courier/orders', {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        signal: AbortSignal.timeout(15000)
-      })
-      
-      if (!ordersResponse.ok) {
-        console.error('Ошибка получения заказов:', ordersResponse.status, ordersResponse.statusText)
-        return
-      }
-      
-      const ordersData = await ordersResponse.json()
-      if (!ordersData.success) {
-        console.error('Ошибка API заказов:', ordersData.error)
-        return
-      }
-      
-      const allOrders = ordersData.data || []
-      
-      // Фильтруем доступные заказы
-      const availableOrders = allOrders.filter((order: OrderWithDetails) => 
-        order.status === 'COURIER_WAIT' && !order.courierId
-      )
-      
-      const currentCount = availableOrders.length
-      const currentOrderIds = new Set<string>(availableOrders.map((order: OrderWithDetails) => order.id))
-      
-      // Находим заказы, которых не было в предыдущем списке (реально новые)
-      const newOrderIds = Array.from(currentOrderIds).filter((id) => !previousOrderIds.has(id as string))
-      
-      if (newOrderIds.length > 0) {
-        console.log(`🎯 Обнаружено ${newOrderIds.length} новых заказов:`, newOrderIds.map((id) => (id as string).slice(-8)))
-        console.log(`📊 Статистика: previousOrderIds=${previousOrderIds.size}, currentOrderIds=${currentOrderIds.size}, notifiedOrderIds=${notifiedOrderIds.size}`)
-        
-        // Получаем объекты заказов для новых ID
-        const newOrders = availableOrders.filter((order: OrderWithDetails) => newOrderIds.includes(order.id as string))
-        
-        // Фильтруем заказы, для которых еще не отправлены уведомления
-        const ordersToNotify = newOrders.filter((order: OrderWithDetails) => !notifiedOrderIds.has(order.id as string))
-        
-        if (ordersToNotify.length > 0) {
-          console.log(`📤 Отправляем уведомления для ${ordersToNotify.length} заказов:`, ordersToNotify.map((o: OrderWithDetails) => (o.id as string).slice(-8)))
-          
-          // Отправляем браузерные уведомления для каждого нового заказа
-          ordersToNotify.forEach((order: OrderWithDetails) => {
-            const orderNumber = order.id.slice(-8)
-            const totalAmount = order.orderItems.reduce((sum, item) => 
-              sum + Number(item.price) * item.amount, 0
-            )
-            
-            sendBrowserNotification(
-              '📦 Новый заказ!',
-              `Заказ #${orderNumber}\nАдрес: ${order.deliveryAddress}\nСумма: ${totalAmount} сом`,
-              '/favicon.ico'
-            )
-          })
-          
-          // Отправляем уведомления параллельно с использованием Promise.all
-          const notificationPromises = ordersToNotify.map(async (order: OrderWithDetails) => {
-            try {
-              const controller = new AbortController()
-              const timeoutId = setTimeout(() => controller.abort(), 20000) // 20 секунд таймаут
-              
-              const response = await fetch('/api/telegram/notify-new-order', {
-                method: 'POST',
-                headers: {
-                  'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({ orderId: order.id }),
-                signal: controller.signal
-              })
-              
-              clearTimeout(timeoutId)
-              
-              if (response.ok) {
-                console.log('✅ Уведомление отправлено для заказа:', (order.id as string).slice(-8))
-                // Добавляем ID заказа в Set отправленных уведомлений
-                setNotifiedOrderIds(prev => new Set(prev).add(order.id as string))
-                return { success: true, orderId: order.id }
-              } else {
-                console.error('❌ Ошибка отправки уведомления для заказа:', (order.id as string).slice(-8), response.status)
-                return { success: false, orderId: order.id }
-              }
-            } catch (error) {
-              if (error instanceof Error && error.name === 'AbortError') {
-                console.log('⏰ Таймаут отправки уведомления для заказа:', (order.id as string).slice(-8))
-              } else {
-                console.error('❌ Ошибка отправки уведомления:', error)
-              }
-              return { success: false, orderId: order.id }
-            }
-          })
-          
-          // Ждем завершения всех уведомлений
-          await Promise.allSettled(notificationPromises)
-        } else {
-          console.log('ℹ️ Все новые заказы уже имеют отправленные уведомления')
-        }
-      }
-      
-      // Обновляем сохраненный список ID заказов и счетчик
-      setPreviousOrderIds(new Set(Array.from(currentOrderIds)))
-      setPreviousAvailableCount(currentCount)
-      
-    } catch (error) {
-      // Не логируем таймауты как ошибки, это нормальное поведение
-      if (error instanceof Error && error.name === 'AbortError') {
-        console.log('⏰ Таймаут при проверке новых заказов - это нормально')
-        return
-      }
-      
-      console.error('Ошибка проверки новых заказов:', error)
-      
-      // Более детальная обработка ошибок
-      if (error instanceof Error) {
-        if (error.message.includes('Failed to fetch')) {
-          console.log('🌐 Проблема с подключением к серверу')
-        } else {
-          console.log('❌ Неизвестная ошибка:', error.message)
-        }
-      }
-    }
-  }, [previousOrderIds, notifiedOrderIds])
-
-  const fetchOrders = useCallback(async (showLoading = true) => {
-    if (showLoading) setIsLoading(true)
-    
-    try {
       const response = await fetch('/api/courier/orders', {
         method: 'GET',
         headers: {
@@ -411,6 +336,91 @@ export default function CourierDashboard() {
           setIsInitialized(true)
           
           console.log(`🔄 Инициализация: найдено ${availableOrders.length} доступных заказов, добавлены в notifiedOrderIds`)
+        } else {
+          // Проверяем новые заказы только при автоматическом обновлении
+          const availableOrders = newOrders.filter((order: OrderWithDetails) => 
+            order.status === 'COURIER_WAIT' && !order.courierId
+          )
+          
+          const currentCount = availableOrders.length
+          const currentOrderIds = new Set<string>(availableOrders.map((order: OrderWithDetails) => order.id))
+          
+          // Находим заказы, которых не было в предыдущем списке (реально новые)
+          const newOrderIds = Array.from(currentOrderIds).filter((id) => !previousOrderIdsRef.current.has(id as string))
+          
+          if (newOrderIds.length > 0) {
+            console.log(`🎯 Обнаружено ${newOrderIds.length} новых заказов:`, newOrderIds.map((id) => (id as string).slice(-8)))
+            console.log(`📊 Статистика: previousOrderIds=${previousOrderIds.size}, currentOrderIds=${currentOrderIds.size}, notifiedOrderIds=${notifiedOrderIds.size}`)
+            
+            // Получаем объекты заказов для новых ID
+            const newOrdersToNotify = availableOrders.filter((order: OrderWithDetails) => newOrderIds.includes(order.id as string))
+            
+            // Фильтруем заказы, для которых еще не отправлены уведомления
+            const ordersToNotify = newOrdersToNotify.filter((order: OrderWithDetails) => !notifiedOrderIdsRef.current.has(order.id as string))
+            
+            if (ordersToNotify.length > 0) {
+              console.log(`📤 Отправляем уведомления для ${ordersToNotify.length} заказов:`, ordersToNotify.map((o: OrderWithDetails) => (o.id as string).slice(-8)))
+              
+              // Отправляем браузерные уведомления для каждого нового заказа
+              ordersToNotify.forEach((order: OrderWithDetails) => {
+                const orderNumber = order.id.slice(-8)
+                const totalAmount = order.orderItems.reduce((sum, item) => 
+                  sum + Number(item.price) * item.amount, 0
+                )
+                
+                sendBrowserNotification(
+                  '📦 Новый заказ!',
+                  `Заказ #${orderNumber}\nАдрес: ${order.deliveryAddress}\nСумма: ${totalAmount} сом`,
+                  '/favicon.ico'
+                )
+              })
+              
+              // Отправляем уведомления параллельно с использованием Promise.all
+              const notificationPromises = ordersToNotify.map(async (order: OrderWithDetails) => {
+                try {
+                  const controller = new AbortController()
+                  const timeoutId = setTimeout(() => controller.abort(), 20000) // 20 секунд таймаут
+                  
+                  const response = await fetch('/api/telegram/notify-new-order', {
+                    method: 'POST',
+                    headers: {
+                      'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ orderId: order.id }),
+                    signal: controller.signal
+                  })
+                  
+                  clearTimeout(timeoutId)
+                  
+                  if (response.ok) {
+                    console.log('✅ Уведомление отправлено для заказа:', (order.id as string).slice(-8))
+                    // Добавляем ID заказа в Set отправленных уведомлений
+                    setNotifiedOrderIds(prev => new Set(prev).add(order.id as string))
+                    return { success: true, orderId: order.id }
+                  } else {
+                    console.error('❌ Ошибка отправки уведомления для заказа:', (order.id as string).slice(-8), response.status)
+                    return { success: false, orderId: order.id }
+                  }
+                } catch (error) {
+                  if (error instanceof Error && error.name === 'AbortError') {
+                    console.log('⏰ Таймаут отправки уведомления для заказа:', (order.id as string).slice(-8))
+                  } else {
+                    console.error('❌ Ошибка отправки уведомления:', error)
+                  }
+                  return { success: false, orderId: order.id }
+                }
+              })
+              
+              // Ждем завершения всех уведомлений
+              await Promise.allSettled(notificationPromises)
+            } else {
+              console.log('ℹ️ Все новые заказы уже имеют отправленные уведомления')
+            }
+          }
+          
+          // Обновляем сохраненный список ID заказов и счетчик
+          setPreviousOrderIds(new Set(Array.from(currentOrderIds)))
+          setPreviousAvailableCount(currentCount)
         }
       } else {
         setError(data.error || t('error'))
@@ -433,7 +443,6 @@ export default function CourierDashboard() {
           console.log('❌ Неизвестная ошибка:', error.message)
         }
       }
-      
       
       // Не показываем ошибку при автоматическом обновлении, только при первой загрузке
       if (showLoading) {
@@ -525,17 +534,8 @@ export default function CourierDashboard() {
         // Добавляем эффект свечения к обновленному заказу
         addGlowEffect(orderId)
         
-        // Обновляем данные заказов для корректного отображения
-        await fetchOrders(false)
-        
-        // После обновления данных находим местоположение заказа
-        setTimeout(() => {
-          const location = findOrderLocation(orderId)
-          if (location) {
-            // Убираем дополнительное переключение - оставляем пользователя на targetTab
-            console.log(`✅ Заказ ${orderId.slice(-8)} найден на вкладке "${location.tab}", остаемся на "${targetTab}"`)
-          }
-        }, 200) // Увеличиваем задержку для более надежного обновления
+        // Локальное обновление уже выполнено выше, дополнительный запрос не нужен
+        console.log(`✅ Статус заказа ${orderId.slice(-8)} обновлен локально, переключение на вкладку "${targetTab}"`)
       } else {
         setError(data.error || t('error'))
       }
@@ -574,7 +574,7 @@ export default function CourierDashboard() {
         if (data.success && data.data?.id) {
           setCurrentCourierId(data.data.id)
         }
-        fetchOrders()
+        fetchOrdersAndCheckNew()
       } catch (error) {
         console.error('Ошибка проверки авторизации:', error)
         // Очищаем токен и перенаправляем
@@ -584,7 +584,7 @@ export default function CourierDashboard() {
     }
     
     checkAuth()
-  }, [fetchOrders, router])
+  }, [fetchOrdersAndCheckNew, router])
 
   // Обработка URL параметров для перехода к заказу или вкладке
   useEffect(() => {
@@ -614,19 +614,17 @@ export default function CourierDashboard() {
   }, [orders, searchParams, recentStatusChange])
 
 
-  // Автоматическое обновление каждые 5 секунд
+  // Автоматическое обновление каждые 10 секунд
   useEffect(() => {
     const interval = setInterval(() => {
       if (isInitialized) {
-        // Сначала проверяем новые заказы
-        checkForNewOrders()
-        // Затем обновляем общий список заказов
-        fetchOrders(false) // Обновляем без показа loading
+        // Объединенный запрос: получаем заказы и проверяем новые
+        fetchOrdersAndCheckNew(false) // Обновляем без показа loading
       }
-    }, 5000) // 5 секунд
+    }, 10000) // 10 секунд
 
     return () => clearInterval(interval)
-  }, [fetchOrders, checkForNewOrders, isInitialized])
+  }, [fetchOrdersAndCheckNew, isInitialized])
 
   // Очистка notifiedOrderIds для заказов, которые больше не в статусе COURIER_WAIT
   useEffect(() => {
@@ -692,10 +690,19 @@ export default function CourierDashboard() {
       const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
       const yesterday = new Date(today)
       yesterday.setDate(yesterday.getDate() - 1)
-      const weekAgo = new Date(today)
-      weekAgo.setDate(weekAgo.getDate() - 7)
-      const monthAgo = new Date(today)
-      monthAgo.setMonth(monthAgo.getMonth() - 1)
+      
+      // Для недели - текущая неделя (понедельник-воскресенье)
+      const dayOfWeek = now.getDay()
+      const weekStart = new Date(today)
+      weekStart.setDate(today.getDate() - (dayOfWeek === 0 ? 6 : dayOfWeek - 1))
+      const weekEnd = new Date(weekStart)
+      weekEnd.setDate(weekStart.getDate() + 6)
+      weekEnd.setHours(23, 59, 59, 999) // Конец воскресенья
+      
+      // Для месяца - текущий месяц
+      const monthStart = new Date(now.getFullYear(), now.getMonth(), 1)
+      const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0)
+      monthEnd.setHours(23, 59, 59, 999) // Конец последнего дня месяца
       
       filtered = filtered.filter(order => {
         const orderDate = new Date(order.createdAt)
@@ -706,9 +713,9 @@ export default function CourierDashboard() {
           case 'yesterday':
             return orderDate >= yesterday && orderDate < today
           case 'week':
-            return orderDate >= weekAgo
+            return orderDate >= weekStart && orderDate <= weekEnd
           case 'month':
-            return orderDate >= monthAgo
+            return orderDate >= monthStart && orderDate <= monthEnd
           default:
             return true
         }
@@ -1017,12 +1024,11 @@ export default function CourierDashboard() {
                 }`}
               >
                 <FunnelIcon className="w-3 h-3 sm:w-4 sm:h-4" />
-                <span className="hidden sm:inline">Фильтры</span>
+                <span className="hidden sm:inline">{t('filters')}</span>
               </button>
               
               {/* Сортировка */}
               <div className="flex items-center gap-1.5 sm:gap-2">
-                <ArrowsUpDownIcon className="w-3 h-3 sm:w-4 sm:h-4 text-gray-500" />
                 <CustomDropdown
                   options={sortOptions}
                   value={sortBy}
@@ -1044,7 +1050,7 @@ export default function CourierDashboard() {
                   <div>
                     <label className="flex items-center gap-2 text-sm mb-2 text-gray-400">
                       <CalendarIcon className="w-4 h-4" />
-                      Период
+                      {t('period')}
                     </label>
                     <CustomDropdown
                       options={dateFilterOptions}
@@ -1058,12 +1064,12 @@ export default function CourierDashboard() {
                   <div>
                     <label className="flex items-center gap-2 text-sm mb-2 text-gray-400">
                       <CurrencyDollarIcon className="w-4 h-4" />
-                      Цена заказа (₽)
+                      {t('orderPrice')}
                     </label>
                     <div className="flex gap-2">
                       <input
                         type="number"
-                        placeholder="От"
+                        placeholder={t('from')}
                         value={priceMin}
                         onChange={(e) => setPriceMin(e.target.value)}
                         className="w-full px-3 py-2 rounded-lg text-sm border transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -1075,7 +1081,7 @@ export default function CourierDashboard() {
                       />
                       <input
                         type="number"
-                        placeholder="До"
+                        placeholder={t('to')}
                         value={priceMax}
                         onChange={(e) => setPriceMax(e.target.value)}
                         className="w-full px-3 py-2 rounded-lg text-sm border transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -1092,12 +1098,12 @@ export default function CourierDashboard() {
                   <div>
                     <label className="flex items-center gap-2 text-sm mb-2 text-gray-400">
                       <ShoppingBagIcon className="w-4 h-4" />
-                      Кол-во товаров (шт.)
+                      {t('itemsCount')}
                     </label>
                     <div className="flex gap-2">
                       <input
                         type="number"
-                        placeholder="От"
+                        placeholder={t('from')}
                         value={itemsMin}
                         onChange={(e) => setItemsMin(e.target.value)}
                         className="w-full px-3 py-2 rounded-lg text-sm border transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -1109,7 +1115,7 @@ export default function CourierDashboard() {
                       />
                       <input
                         type="number"
-                        placeholder="До"
+                        placeholder={t('to')}
                         value={itemsMax}
                         onChange={(e) => setItemsMax(e.target.value)}
                         className="w-full px-3 py-2 rounded-lg text-sm border transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -1132,10 +1138,15 @@ export default function CourierDashboard() {
                         setItemsMin('')
                         setItemsMax('')
                       }}
-                      className="w-full flex items-center justify-center gap-2 px-4 py-2 rounded-lg text-sm text-white bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 transition-all duration-200 shadow-md hover:shadow-lg"
+                      disabled={dateFilter === 'all' && !priceMin && !priceMax && !itemsMin && !itemsMax}
+                      className={`w-full flex items-center justify-center gap-2 px-4 py-2 rounded-lg text-sm transition-all duration-200 shadow-md hover:shadow-lg ${
+                        dateFilter === 'all' && !priceMin && !priceMax && !itemsMin && !itemsMax
+                          ? 'text-gray-400 bg-gray-200 dark:bg-gray-700 cursor-not-allowed'
+                          : 'text-white bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700'
+                      }`}
                     >
                       <ArrowsUpDownIcon className="w-4 h-4" />
-                      Сбросить все
+                      {t('resetAll')}
                     </button>
                   </div>
                 </div>
@@ -1143,19 +1154,22 @@ export default function CourierDashboard() {
                 {/* Активные фильтры - показываем бейджи */}
                 {(dateFilter !== 'all' || priceMin || priceMax || itemsMin || itemsMax) && (
                   <div className="mt-3 pt-3 border-t flex flex-wrap gap-2" style={{ borderColor: 'var(--border)' }}>
-                    <span className="text-xs text-gray-400">Активные фильтры:</span>
+                    <span className="text-xs text-gray-400">{t('activeFilters')}</span>
                     
                     {dateFilter !== 'all' && (
                       <span className="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 text-xs">
                         <CalendarIcon className="w-3 h-3" />
-                        {dateFilter === 'today' ? 'Сегодня' : dateFilter === 'yesterday' ? 'Вчера' : dateFilter === 'week' ? 'За неделю' : 'За месяц'}
+                        {dateFilter === 'today' ? `${t('today')} (${getTodayRange()})` : 
+                         dateFilter === 'yesterday' ? `${t('yesterday')} (${getYesterdayRange()})` : 
+                         dateFilter === 'week' ? `${t('thisWeek')} (${getWeekRange()})` : 
+                         `${t('thisMonth')} (${getMonthRange()})`}
                       </span>
                     )}
                     
                     {(priceMin || priceMax) && (
                       <span className="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 text-xs">
                         <CurrencyDollarIcon className="w-3 h-3" />
-                        {priceMin || '0'} - {priceMax || '∞'} ₽
+                        {priceMin || '0'} - {priceMax || '∞'} сом
                       </span>
                     )}
                     

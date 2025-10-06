@@ -99,6 +99,38 @@ const translations = {
     'item': 'товар',
     'items2': 'товара',
     
+    // Фильтры и сортировка
+    'filters': 'Фильтры',
+    'sorting': 'Сортировка',
+    'period': 'Период',
+    'orderPrice': 'Цена заказа (сом)',
+    'itemsCount': 'Кол-во товаров (шт.)',
+    'resetAll': 'Сбросить все',
+    'allTime': 'Все время',
+    'today': 'Сегодня',
+    'yesterday': 'Вчера',
+    'thisWeek': 'За неделю',
+    'thisMonth': 'За месяц',
+    'sortNewest': 'Сначала новые',
+    'sortOldest': 'Сначала старые',
+    'sortPriceHigh': 'Цена: по убыванию',
+    'sortPriceLow': 'Цена: по возрастанию',
+    'sortItemsHigh': 'Товаров: больше',
+    'sortItemsLow': 'Товаров: меньше',
+    'activeFilters': 'Активные фильтры:',
+    'from': 'От',
+    'to': 'До',
+    
+    // Модальное окно заказов
+    'products': 'Товары',
+    'seller': 'Продавец',
+    'product': 'товар',
+    'products2': 'товара',
+    'products5': 'товаров',
+    'client': 'Клиент',
+    'phoneLabel': 'Телефон',
+    'addressLabel': 'Адрес',
+    
     // Навигация
     'storeCourier': 'StoreCourier',
     'courierCabinet': 'Личный кабинет курьера',
@@ -290,7 +322,39 @@ const translations = {
     'enterNewName': 'Жаңы атыңызды киргизиңиз',
     'saving': 'Сактоодо...',
     'connectionError': 'Серверге туташуу катасы',
-    'searchOrders': 'Буйрутмаларды издөө (ID, дарек, ат, телефон, товарлар...)'
+    'searchOrders': 'Буйрутмаларды издөө (ID, дарек, ат, телефон, товарлар...)',
+    
+    // Фильтры и сортировка
+    'filters': 'Фильтрлер',
+    'sorting': 'Сорттоо',
+    'period': 'Мөөнөт',
+    'orderPrice': 'Буйрутманын баасы (сом)',
+    'itemsCount': 'Товарлардын саны (даана)',
+    'resetAll': 'Баарын тазалоо',
+    'allTime': 'Бардык убакыт',
+    'today': 'Бүгүн',
+    'yesterday': 'Кечээ',
+    'thisWeek': 'Ушул жума',
+    'thisMonth': 'Ушул ай',
+    'sortNewest': 'Алгач жаңылар',
+    'sortOldest': 'Алгач эскилер',
+    'sortPriceHigh': 'Баа: төмөндөн жогору',
+    'sortPriceLow': 'Баа: жогорудан төмөн',
+    'sortItemsHigh': 'Товарлар: көбүрөөк',
+    'sortItemsLow': 'Товарлар: азыраак',
+    'activeFilters': 'Активдүү фильтрлер:',
+    'from': 'Башынан',
+    'to': 'Аягына чейин',
+    
+    // Модальное окно заказов
+    'products': 'Товарлар',
+    'seller': 'Сатуучу',
+    'product': 'товар',
+    'products2': 'товар',
+    'products5': 'товар',
+    'client': 'Кардар',
+    'phoneLabel': 'Телефон',
+    'addressLabel': 'Дарек'
   }
 }
 

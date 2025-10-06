@@ -188,11 +188,18 @@ export async function startTelegramPolling() {
       )
 
       try {
-        await botInstance!.sendMessage(chatId, result.message, {
+        const messageOptions: any = {
           reply_markup: {
             remove_keyboard: true
           }
-        })
+        }
+
+        // Если есть клавиатура в результате, добавляем её
+        if (result.keyboard) {
+          messageOptions.reply_markup = result.keyboard
+        }
+
+        await botInstance!.sendMessage(chatId, result.message, messageOptions)
         
         if (result.success) {
           console.log(`✅ Курьер успешно зарегистрирован: ${result.data?.courierName}`)

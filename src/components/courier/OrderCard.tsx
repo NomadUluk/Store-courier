@@ -97,13 +97,65 @@ export function OrderCard({ order, onStatusUpdate, isUpdating = false }: OrderCa
           </div>
           <div className="flex items-center space-x-2">
             <span className="font-medium w-20" style={{ color: 'var(--muted)' }}>{t('phone')}:</span>
-            <a href={`tel:${order.customerPhone}`} className="text-primary hover:text-primary-hover transition-colors">
+            <a 
+              href={`tel:${order.customerPhone}`} 
+              className="text-primary hover:text-primary-hover active:scale-95 transition-all duration-150 ease-out select-none"
+              onClick={(e) => {
+                e.stopPropagation()
+                // Добавляем визуальную обратную связь
+                if (e.currentTarget) {
+                  e.currentTarget.style.transform = 'scale(0.95)'
+                  setTimeout(() => {
+                    if (e.currentTarget) {
+                      e.currentTarget.style.transform = 'scale(1)'
+                    }
+                  }, 150)
+                }
+              }}
+            >
               {order.customerPhone}
             </a>
           </div>
           <div className="flex items-start space-x-2">
             <span className="font-medium w-20" style={{ color: 'var(--muted)' }}>{t('address')}:</span>
-            <span className="flex-1" style={{ color: 'var(--foreground)' }}>{order.deliveryAddress}</span>
+            <button
+              className="flex-1 text-left hover:text-primary active:scale-95 transition-all duration-150 ease-out select-none"
+              style={{ color: 'var(--foreground)' }}
+              onClick={(e) => {
+                e.stopPropagation()
+                // Копируем адрес в буфер обмена
+                navigator.clipboard.writeText(order.deliveryAddress).then(() => {
+                  // Добавляем визуальную обратную связь
+                  if (e.currentTarget) {
+                    e.currentTarget.style.transform = 'scale(0.95)'
+                    e.currentTarget.style.color = '#10b981' // green-500
+                    setTimeout(() => {
+                      if (e.currentTarget) {
+                        e.currentTarget.style.transform = 'scale(1)'
+                        e.currentTarget.style.color = '#10b981'
+                      }
+                    }, 150)
+                    setTimeout(() => {
+                      if (e.currentTarget) {
+                        e.currentTarget.style.color = 'var(--foreground)'
+                      }
+                    }, 1000)
+                  }
+                }).catch(() => {
+                  // Fallback для старых браузеров
+                  if (e.currentTarget) {
+                    e.currentTarget.style.transform = 'scale(0.95)'
+                    setTimeout(() => {
+                      if (e.currentTarget) {
+                        e.currentTarget.style.transform = 'scale(1)'
+                      }
+                    }, 150)
+                  }
+                })
+              }}
+            >
+              {order.deliveryAddress}
+            </button>
           </div>
           {/* Комментарии */}
           <div className="space-y-2">
@@ -158,29 +210,65 @@ export function OrderCard({ order, onStatusUpdate, isUpdating = false }: OrderCa
           </svg>
           <h4 className="font-semibold" style={{ color: 'var(--foreground)' }}>{t('orderItems')}</h4>
         </div>
-        <div className="space-y-3">
-          {order.orderItems.map((item) => (
-            <div key={item.id} className="flex justify-between items-center py-3 border-b-2 last:border-b-0" style={{ borderColor: 'var(--border)' }}>
-              <div className="flex-1">
-                <p className="font-medium" style={{ color: 'var(--foreground)' }}>{item.product.name}</p>
-                <p className="text-sm" style={{ color: 'var(--muted)' }}>{t('quantity')}: {item.amount}</p>
+        <div className="space-y-4">
+          {(() => {
+            // Группируем товары по продавцам
+            const groupedBySeller = order.orderItems.reduce((acc, item) => {
+              const sellerId = item.product.seller.id
+              
+              if (!acc[sellerId]) {
+                acc[sellerId] = {
+                  seller: item.product.seller,
+                  items: []
+                }
+              }
+              acc[sellerId].items.push(item)
+              return acc
+            }, {} as Record<string, { seller: any, items: any[] }>)
+
+            return Object.values(groupedBySeller).map((sellerGroup) => (
+              <div key={sellerGroup.seller.id} className="space-y-3">
+                {/* Заголовок продавца */}
+                <div className="flex items-center gap-2 px-3 py-2 rounded-lg border" style={{ backgroundColor: 'var(--background-subtle)', borderColor: 'var(--border)' }}>
+                  <svg className="w-4 h-4 text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                  </svg>
+                  <span className="text-sm font-medium text-blue-400">
+                    Продавец: {sellerGroup.seller.fullname}
+                  </span>
+                  <span className="text-xs text-gray-400">
+                    ({sellerGroup.items.length} {sellerGroup.items.length === 1 ? 'товар' : sellerGroup.items.length < 5 ? 'товара' : 'товаров'})
+                  </span>
+                </div>
+                
+                {/* Товары этого продавца */}
+                <div className="space-y-3 ml-4">
+                  {sellerGroup.items.map((item) => (
+                    <div key={item.id} className="flex justify-between items-center py-3 border-b-2 last:border-b-0" style={{ borderColor: 'var(--border)' }}>
+                      <div className="flex-1">
+                        <p className="font-medium" style={{ color: 'var(--foreground)' }}>{item.product.name}</p>
+                        <p className="text-sm" style={{ color: 'var(--muted)' }}>{t('quantity')}: {item.amount}</p>
+                      </div>
+                      <div className="text-right">
+                        <p className="font-semibold" style={{ color: 'var(--foreground)' }}>
+                          {(Number(item.price) * item.amount).toLocaleString('ru-RU')} сом
+                        </p>
+                        <p className="text-xs" style={{ color: 'var(--muted)' }}>
+                          {Number(item.price).toLocaleString('ru-RU')} сом × {item.amount}
+                        </p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
               </div>
-              <div className="text-right">
-                <p className="font-semibold" style={{ color: 'var(--foreground)' }}>
-                  {(Number(item.price) * item.amount).toLocaleString('ru-RU')} ₽
-                </p>
-                <p className="text-xs" style={{ color: 'var(--muted)' }}>
-                  {Number(item.price).toLocaleString('ru-RU')} ₽ × {item.amount}
-                </p>
-              </div>
-            </div>
-          ))}
+            ))
+          })()}
         </div>
         <div className="rounded-lg p-3 mt-4" style={{ backgroundColor: 'var(--secondary)' }}>
           <div className="flex justify-between items-center">
             <span className="font-semibold" style={{ color: 'var(--foreground)' }}>{t('totalAmount')}:</span>
             <span className="text-xl font-bold text-primary">
-              {totalAmount.toLocaleString('ru-RU')} ₽
+              {totalAmount.toLocaleString('ru-RU')} сом
             </span>
           </div>
         </div>

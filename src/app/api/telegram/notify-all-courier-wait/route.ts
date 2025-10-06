@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { sendNewOrderNotification } from '@/lib/telegram'
+import { sendBulkNotifications } from '@/lib/notification-manager'
 import type { ApiResponse } from '@/types'
+import type { NotificationRequest } from '@/lib/notification-manager'
 
 export async function POST(request: NextRequest) {
   try {
@@ -34,29 +35,50 @@ export async function POST(request: NextRequest) {
       })
     }
 
-    // Отправляем уведомления для каждого заказа
-    const results = []
-    for (const order of orders) {
-      try {
-        console.log('API: Отправляем уведомление для заказа:', order.id)
-        await sendNewOrderNotification(order)
-        results.push({ orderId: order.id, success: true })
-      } catch (error) {
-        console.error('API: Ошибка отправки уведомления для заказа:', order.id, error)
-        results.push({ orderId: order.id, success: false, error: error instanceof Error ? error.message : 'Неизвестная ошибка' })
-      }
-    }
+    // Подготавливаем массив уведомлений для централизованной системы
+    const notifications: NotificationRequest[] = orders.map(order => ({
+      orderId: order.id,
+      type: 'NEW_ORDER' as const
+    }))
+
+    // Используем централизованную систему для массовой отправки
+    const results = await sendBulkNotifications(request, notifications)
 
     const successCount = results.filter(r => r.success).length
-    const errorCount = results.filter(r => !r.success).length
+    const duplicateCount = results.filter(r => r.duplicate).length
+    const errorCount = results.length - successCount
 
-    console.log('API: Результаты отправки:', { success: successCount, errors: errorCount })
-
-    return NextResponse.json<ApiResponse>({
+    const response = NextResponse.json<ApiResponse>({
       success: true,
-      message: `Уведомления отправлены: ${successCount} успешно, ${errorCount} с ошибками`,
-      data: { results, successCount, errorCount }
+      message: `Уведомления отправлены: ${successCount} успешно, ${duplicateCount} дубликатов, ${errorCount} с ошибками`,
+      data: { 
+        results, 
+        summary: {
+          total: results.length,
+          success: successCount,
+          duplicates: duplicateCount,
+          errors: errorCount
+        }
+      }
     })
+
+    // Устанавливаем cookies для успешно отправленных уведомлений
+    results.forEach(result => {
+      if (result.success && !result.duplicate) {
+        const notificationKey = `${result.orderId}_${result.type}`
+        const cookieName = `notification_${notificationKey}`
+        const timestamp = result.timestamp.toString()
+        
+        response.cookies.set(cookieName, timestamp, {
+          maxAge: 300, // 5 минут в секундах
+          httpOnly: true,
+          secure: process.env.NODE_ENV === 'production',
+          sameSite: 'strict'
+        })
+      }
+    })
+
+    return response
   } catch (error) {
     console.error('Notify all courier wait error:', error)
     return NextResponse.json<ApiResponse>({

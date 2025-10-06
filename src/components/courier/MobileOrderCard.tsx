@@ -61,7 +61,7 @@ export function MobileOrderCard({ order, onClick, isGlowing = false }: MobileOrd
           </div>
           <div className="text-right">
             <div className="text-base font-semibold gradient-text">
-              {totalAmount.toLocaleString('ru-RU')} ₽
+              {totalAmount.toLocaleString('ru-RU')} сом
             </div>
             <div className="text-xs text-gray-400">
               {totalItems} {totalItems === 1 ? 'товар' : totalItems < 5 ? 'товара' : 'товаров'}
@@ -96,13 +96,23 @@ export function MobileOrderCard({ order, onClick, isGlowing = false }: MobileOrd
             </div>
           )}
 
+          {/* Телефон (если не COURIER_WAIT) */}
+          {order.status !== 'COURIER_WAIT' && (
+            <div className="flex items-center justify-between">
+              <span className="text-xs text-gray-400">Телефон</span>
+              <span className="text-xs text-gray-400 select-none">
+                {order.customerPhone}
+              </span>
+            </div>
+          )}
+
           {/* Адрес */}
           <div className="flex items-start justify-between">
             <span className="text-xs text-gray-400">Адрес</span>
             <div className="text-right flex-1 ml-2">
-              <p className="text-xs text-white leading-tight line-clamp-2">
+              <span className="text-xs text-white leading-tight line-clamp-2 text-right select-none w-full">
                 {order.deliveryAddress}
-              </p>
+              </span>
             </div>
           </div>
 

@@ -44,7 +44,8 @@ export async function POST(request: NextRequest) {
           phoneNumber: courier.phoneNumber
         },
         chatId,
-        registrationSuccess: result.success
+        registrationSuccess: result.success,
+        keyboard: result.keyboard
       }
     })
   } catch (error) {

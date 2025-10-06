@@ -205,7 +205,7 @@ export function OrderDetailModal({
                           <svg className="w-4 h-4 text-blue-600 dark:text-blue-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                           </svg>
-                          <span>Клиент</span>
+                          <span>{t('client')}</span>
                         </div>
                       </td>
                       <td className="p-3 lg:p-4 text-white">
@@ -218,11 +218,26 @@ export function OrderDetailModal({
                           <svg className="w-4 h-4 text-blue-600 dark:text-blue-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
                           </svg>
-                          <span>Телефон</span>
+                          <span>{t('phoneLabel')}</span>
                         </div>
                       </td>
                       <td className="p-3 lg:p-4">
-                        <a href={`tel:${order.customerPhone}`} className="text-blue-400 hover:underline">
+                        <a 
+                          href={`tel:${order.customerPhone}`} 
+                          className="text-blue-400 hover:underline active:scale-95 transition-all duration-150 ease-out select-none"
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            // Добавляем визуальную обратную связь
+                            if (e.currentTarget) {
+                              e.currentTarget.style.transform = 'scale(0.95)'
+                              setTimeout(() => {
+                                if (e.currentTarget) {
+                                  e.currentTarget.style.transform = 'scale(1)'
+                                }
+                              }, 150)
+                            }
+                          }}
+                        >
                           {order.customerPhone}
                         </a>
                       </td>
@@ -234,7 +249,7 @@ export function OrderDetailModal({
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
                           </svg>
-                          <span>Адрес</span>
+                          <span>{t('addressLabel')}</span>
                         </div>
                       </td>
                       <td className="p-3 lg:p-4">
@@ -258,7 +273,7 @@ export function OrderDetailModal({
               </div>
             )}
             
-            {/* Адрес доставки для доступных заказов */}
+            {/* {t('addressLabel')} доставки для доступных заказов */}
             {order.status === 'COURIER_WAIT' && (
               <div className="rounded-xl border overflow-hidden" style={{ borderColor: 'var(--border)' }}>
                 <table className="w-full text-xs sm:text-sm">
@@ -270,7 +285,7 @@ export function OrderDetailModal({
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
                           </svg>
-                          <span>Адрес</span>
+                          <span>{t('addressLabel')}</span>
                         </div>
                       </td>
                       <td className="p-3 lg:p-4">
@@ -349,43 +364,80 @@ export function OrderDetailModal({
               </div>
             )}
 
-            {/* Товары в заказе - список */}
+            {/* Товары в заказе - список с группировкой по продавцам */}
             <div className="rounded-xl p-3 sm:p-4 lg:p-6 border" style={{ borderColor: 'var(--border)' }}>
               <div className="flex items-center gap-2 mb-2 sm:mb-3 lg:mb-4">
                 <svg className="w-4 h-4 sm:w-5 sm:h-5 lg:w-6 lg:h-6 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
                 </svg>
-                <span className="text-sm sm:text-base lg:text-lg text-white">Товары</span>
+                <span className="text-sm sm:text-base lg:text-lg text-white">{t('products')}</span>
               </div>
               
-              <div className="space-y-2">
-                {order.orderItems.map((item, index) => (
-                  <div key={item.id} className="flex justify-between items-start gap-2 sm:gap-3 rounded-lg p-2 sm:p-3 lg:p-4 border" style={{ borderColor: 'var(--border)', backgroundColor: 'var(--background-subtle)' }}>
-                    <div className="flex gap-2 sm:gap-3 flex-1 min-w-0">
-                      <span className="text-xs sm:text-sm text-gray-400 flex-shrink-0">
-                        {index + 1}.
-                      </span>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-xs sm:text-sm lg:text-base break-words text-white line-clamp-2">
-                          {item.product.name}
-                        </p>
-                        <p className="text-xs mt-0.5 text-gray-400">
-                          {item.amount} {t('pcs') || 'шт.'} × {Number(item.price).toLocaleString('ru-RU')} ₽
-                        </p>
+              <div className="space-y-4">
+                {(() => {
+                  // Группируем товары по продавцам
+                  const groupedBySeller = order.orderItems.reduce((acc, item) => {
+                    const sellerId = item.product.seller.id
+                    const sellerName = item.product.seller.fullname
+                    
+                    if (!acc[sellerId]) {
+                      acc[sellerId] = {
+                        seller: item.product.seller,
+                        items: []
+                      }
+                    }
+                    acc[sellerId].items.push(item)
+                    return acc
+                  }, {} as Record<string, { seller: any, items: any[] }>)
+
+                  return Object.values(groupedBySeller).map((sellerGroup, groupIndex) => (
+                    <div key={sellerGroup.seller.id} className="space-y-2">
+                      {/* Заголовок продавца */}
+                      <div className="flex items-center gap-2 px-2 py-1 rounded-lg" style={{ backgroundColor: 'var(--background-subtle)' }}>
+                        <svg className="w-4 h-4 text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                        </svg>
+                        <span className="text-sm font-medium text-blue-400">
+                          {t('seller')}: {sellerGroup.seller.fullname}
+                        </span>
+                        <span className="text-xs text-gray-400">
+                          ({sellerGroup.items.length} {sellerGroup.items.length === 1 ? t('product') : sellerGroup.items.length < 5 ? t('products2') : t('products5')})
+                        </span>
+                      </div>
+                      
+                      {/* Товары этого продавца */}
+                      <div className="space-y-2 ml-4">
+                        {sellerGroup.items.map((item, itemIndex) => (
+                          <div key={item.id} className="flex justify-between items-start gap-2 sm:gap-3 rounded-lg p-2 sm:p-3 lg:p-4 border" style={{ borderColor: 'var(--border)', backgroundColor: 'var(--background-subtle)' }}>
+                            <div className="flex gap-2 sm:gap-3 flex-1 min-w-0">
+                              <span className="text-xs sm:text-sm text-gray-400 flex-shrink-0">
+                                {itemIndex + 1}.
+                              </span>
+                              <div className="flex-1 min-w-0">
+                                <p className="text-xs sm:text-sm lg:text-base break-words text-white line-clamp-2">
+                                  {item.product.name}
+                                </p>
+                                <p className="text-xs mt-0.5 text-gray-400">
+                                  {item.amount} {t('pcs') || 'шт.'} × {Number(item.price).toLocaleString('ru-RU')} сом
+                                </p>
+                              </div>
+                            </div>
+                            <p className="text-xs sm:text-sm lg:text-base whitespace-nowrap text-white">
+                              {(Number(item.price) * item.amount).toLocaleString('ru-RU')} сом
+                            </p>
+                          </div>
+                        ))}
                       </div>
                     </div>
-                    <p className="text-xs sm:text-sm lg:text-base whitespace-nowrap text-white">
-                      {(Number(item.price) * item.amount).toLocaleString('ru-RU')} ₽
-                    </p>
-                  </div>
-                ))}
+                  ))
+                })()}
               </div>
               
               <div className="border-t pt-2 sm:pt-3 lg:pt-4 mt-2 sm:mt-3 lg:mt-4" style={{ borderColor: 'var(--border)' }}>
                 <div className="flex justify-between items-center">
                   <span className="text-sm sm:text-base lg:text-lg text-white">{t('total')}:</span>
                   <span className="text-lg sm:text-xl lg:text-2xl gradient-text">
-                    {totalAmount.toLocaleString('ru-RU')} ₽
+                    {totalAmount.toLocaleString('ru-RU')} сом
                   </span>
                 </div>
               </div>
