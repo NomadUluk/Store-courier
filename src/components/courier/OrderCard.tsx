@@ -75,7 +75,7 @@ export function OrderCard({ order, onStatusUpdate, isUpdating = false }: OrderCa
           <div>
             <h3 className="text-xl font-bold" style={{ color: 'var(--foreground)' }}>{t('orderNumber')}{order.id.slice(-8)}</h3>
             <p className="text-sm" style={{ color: 'var(--muted)' }}>
-              {new Date(order.createdAt).toLocaleString('ru-RU')}
+              {new Date(order.updatedAt).toLocaleString('ru-RU')}
             </p>
           </div>
         </div>

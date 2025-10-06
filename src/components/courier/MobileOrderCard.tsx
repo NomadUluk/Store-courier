@@ -77,7 +77,7 @@ export function MobileOrderCard({ order, onClick, isGlowing = false }: MobileOrd
           <div className="flex items-center justify-between">
             <span className="text-xs text-gray-400">Дата</span>
             <span className="text-xs text-white">
-              {new Date(order.createdAt).toLocaleDateString('ru-RU', { 
+              {new Date(order.updatedAt).toLocaleDateString('ru-RU', { 
                 day: '2-digit', 
                 month: 'short',
                 hour: '2-digit', 

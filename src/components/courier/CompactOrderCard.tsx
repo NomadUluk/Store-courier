@@ -103,7 +103,7 @@ export function CompactOrderCard({ order, onClick, isGlowing = false }: CompactO
           </span>
           {getStatusBadge(order.status)}
           <span className="text-sm lg:text-base text-gray-400">
-            {new Date(order.createdAt).toLocaleDateString('ru-RU', { 
+            {new Date(order.updatedAt).toLocaleDateString('ru-RU', { 
               day: '2-digit', 
               month: 'short',
               hour: '2-digit', 

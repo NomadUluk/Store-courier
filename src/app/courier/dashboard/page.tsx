@@ -705,7 +705,7 @@ export default function CourierDashboard() {
       monthEnd.setHours(23, 59, 59, 999) // Конец последнего дня месяца
       
       filtered = filtered.filter(order => {
-        const orderDate = new Date(order.createdAt)
+        const orderDate = new Date(order.updatedAt)
         
         switch (dateFilter) {
           case 'today':
@@ -757,9 +757,9 @@ export default function CourierDashboard() {
       
       switch (sortBy) {
         case 'date-new':
-          return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+          return new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
         case 'date-old':
-          return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+          return new Date(a.updatedAt).getTime() - new Date(b.updatedAt).getTime()
         case 'price-high':
           return totalB - totalA
         case 'price-low':
