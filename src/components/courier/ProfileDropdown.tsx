@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect } from 'react'
 import { useLanguage } from '@/contexts/LanguageContext'
+import { ChartBarIcon } from '@heroicons/react/24/outline'
 
 interface ProfileDropdownProps {
   isOpen: boolean
@@ -14,7 +15,20 @@ export function ProfileDropdown({ isOpen, onClose, anchorRef }: ProfileDropdownP
   const [name, setName] = useState('')
   const [phone, setPhone] = useState('')
   const [isLoading, setIsLoading] = useState(false)
+  const [isMobile, setIsMobile] = useState(false)
   const dropdownRef = useRef<HTMLDivElement>(null)
+
+  // Определяем размер экрана
+  useEffect(() => {
+    const checkScreenSize = () => {
+      setIsMobile(window.innerWidth < 1024) // lg breakpoint
+    }
+    
+    checkScreenSize()
+    window.addEventListener('resize', checkScreenSize)
+    
+    return () => window.removeEventListener('resize', checkScreenSize)
+  }, [])
 
   // Загрузка данных профиля
   useEffect(() => {
@@ -62,7 +76,11 @@ export function ProfileDropdown({ isOpen, onClose, anchorRef }: ProfileDropdownP
   return (
     <div 
       ref={dropdownRef}
-      className="absolute right-0 top-full mt-2 w-80 rounded-xl shadow-xl border z-[99999]"
+      className={`absolute top-full mt-2 rounded-xl shadow-xl border z-[99999] ${
+        isMobile 
+          ? 'right-0 w-72' 
+          : 'right-0 w-80'
+      }`}
       style={{ 
         backgroundColor: 'var(--card-bg)',
         borderColor: 'var(--border)'
@@ -106,6 +124,27 @@ export function ProfileDropdown({ isOpen, onClose, anchorRef }: ProfileDropdownP
                   </div>
                 </div>
               </div>
+
+              {/* Кнопка статистики - только для мобильных устройств */}
+              {isMobile && (
+                <div className="mt-4">
+                  <button
+                    onClick={() => {
+                      // Отправляем событие для переключения на статистику
+                      window.dispatchEvent(new CustomEvent('navigateToStats'))
+                      onClose()
+                    }}
+                    className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-lg text-sm font-medium transition-all duration-200 hover:shadow-md"
+                    style={{
+                      backgroundColor: 'var(--primary)',
+                      color: 'var(--primary-foreground)'
+                    }}
+                  >
+                    <ChartBarIcon className="w-5 h-5" />
+                    <span>{t('statistics') || 'Статистика'}</span>
+                  </button>
+                </div>
+              )}
             </>
           )}
         </div>

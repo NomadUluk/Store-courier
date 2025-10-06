@@ -17,7 +17,7 @@ export function CompactOrderCard({ order, onClick, isGlowing = false }: CompactO
       CREATED: { label: t('created'), color: 'bg-gray-500/20 text-gray-300' },
       COURIER_WAIT: { label: t('courierWait'), color: 'bg-yellow-500/20 text-yellow-400' },
       COURIER_PICKED: { label: t('courierPicked'), color: 'bg-blue-500/20 text-blue-400' },
-      ENROUTE: { label: t('enroute'), color: 'bg-blue-500/20 text-blue-400' },
+      ENROUTE: { label: t('enroute'), color: 'bg-orange-500/20 text-orange-400' },
       DELIVERED: { label: t('deliveredStatus'), color: 'bg-green-500/20 text-green-400' },
       CANCELED: { label: t('canceled'), color: 'bg-red-500/20 text-red-400' }
     }

@@ -53,8 +53,6 @@ const translations = {
     'delivered': 'Доставлено',
     'availableOrders': 'Доступные заказы',
     'myOrders': 'Мои заказы',
-    'completedOrders': 'Завершенные заказы',
-    'canceledOrders': 'Отмененные заказы',
     'noAvailableOrders': 'Нет доступных заказов',
     'noActiveOrders': 'У вас нет активных заказов',
     'noCompletedOrders': 'Завершенных заказов пока нет',
@@ -65,6 +63,20 @@ const translations = {
     'canceledOrdersHere': 'Отмененные заказы будут отображаться здесь',
     'updateOrders': 'Обновить заказы',
     'updating': 'Обновление...',
+    
+    // Статистика
+    'statistics': 'Статистика',
+    'statisticsShort': 'Стат.',
+    'totalOrders': 'Всего заказов',
+    'completedOrders': 'Завершенных',
+    'totalRevenue': 'Общая выручка',
+    'averageOrder': 'Средний чек',
+    'canceledOrders': 'Отмененных',
+    'totalItems': 'Товаров доставлено',
+    'completionRate': 'Процент выполнения',
+    'activityByDays': 'Активность по дням недели',
+    'noStatistics': 'Статистика недоступна',
+    'statisticsDescription': 'Статистика будет доступна после выполнения первых заказов',
   
     'showAllCompleted': 'Показать все завершенные заказы',
     
@@ -226,8 +238,6 @@ const translations = {
     'delivered': 'Жеткирилди',
     'availableOrders': 'Жеткиликтүү буйрутмалар',
     'myOrders': 'Менин буйрутмаларым',
-    'completedOrders': 'Аяктаган буйрутмалар',
-    'canceledOrders': 'Жокко чыгарылган буйрутмалар',
     'noAvailableOrders': 'Жеткиликтүү буйрутмалар жок',
     'noActiveOrders': 'Сизде активдүү буйрутмалар жок',
     'noCompletedOrders': 'Аяктаган буйрутмалар азырча жок',
@@ -239,6 +249,20 @@ const translations = {
     'updateOrders': 'Буйрутмаларды жаңыртуу',
     'updating': 'Жаңыртууда...',
     'showAllCompleted': 'Бардык аяктаган буйрутмаларды көрсөтүү',
+    
+    // Статистика
+    'statistics': 'Статистика',
+    'statisticsShort': 'Стат.',
+    'totalOrders': 'Жалпы буйрутмалар',
+    'completedOrders': 'Аяктаган',
+    'totalRevenue': 'Жалпы киреше',
+    'averageOrder': 'Орточо чек',
+    'canceledOrders': 'Жокко чыгарылган',
+    'totalItems': 'Жеткирилген товарлар',
+    'completionRate': 'Аяктоо пайызы',
+    'activityByDays': 'Жума күндөрү боюнча активдүүлүк',
+    'noStatistics': 'Статистика жеткиликтүү эмес',
+    'statisticsDescription': 'Статистика биринчи буйрутмаларды аткаруудан кийин жеткиликтүү болот',
     
     // Статусы заказов
     'created': 'Түзүлдү',

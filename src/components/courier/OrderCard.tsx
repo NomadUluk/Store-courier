@@ -17,7 +17,7 @@ export function OrderCard({ order, onStatusUpdate, isUpdating = false }: OrderCa
       CREATED: { label: t('created'), color: 'bg-gray-100 text-gray-800' },
       COURIER_WAIT: { label: t('courierWait'), color: 'bg-yellow-100 text-yellow-800' },
       COURIER_PICKED: { label: t('courierPicked'), color: 'bg-blue-100 text-blue-800' },
-      ENROUTE: { label: t('enroute'), color: 'bg-primary text-white' },
+      ENROUTE: { label: t('enroute'), color: 'bg-orange-100 text-orange-800' },
       DELIVERED: { label: t('deliveredStatus'), color: 'bg-green-100 text-green-800' },
       CANCELED: { label: t('canceled'), color: 'bg-red-100 text-red-800' }
     }

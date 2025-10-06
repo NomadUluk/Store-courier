@@ -7,12 +7,12 @@ import { MobileOrderCard } from '@/components/courier/MobileOrderCard'
 import { OrderDetailModal } from '@/components/courier/OrderDetailModal'
 import { useLanguage } from '@/contexts/LanguageContext'
 import { CustomDropdown } from '@/components/ui/CustomDropdown'
-import { ClockIcon, BoltIcon, CheckCircleIcon, XCircleIcon, MagnifyingGlassIcon, FunnelIcon, ArrowsUpDownIcon, CalendarIcon, CurrencyDollarIcon, ShoppingBagIcon } from '@heroicons/react/24/outline'
+import { ClockIcon, BoltIcon, CheckCircleIcon, XCircleIcon, MagnifyingGlassIcon, FunnelIcon, ArrowsUpDownIcon, CalendarIcon, CurrencyDollarIcon, ShoppingBagIcon, ChartBarIcon, TruckIcon, ExclamationTriangleIcon } from '@heroicons/react/24/outline'
 import type { OrderWithDetails, OrderStatus, OrderItem, Product, Category, User } from '@/types'
 
-type TabType = 'available' | 'my' | 'completed' | 'canceled'
+type TabType = 'available' | 'my' | 'completed' | 'canceled' | 'statistics'
 type SortType = 'date-new' | 'date-old' | 'price-high' | 'price-low' | 'items-high' | 'items-low'
-type DateFilterType = 'all' | 'today' | 'yesterday' | 'week' | 'month'
+type DateFilterType = 'all' | 'today' | 'yesterday' | 'week' | 'month' | 'year'
 
 // Функции для работы с датами
 const formatDate = (date: Date): string => {
@@ -20,6 +20,79 @@ const formatDate = (date: Date): string => {
   const month = (date.getMonth() + 1).toString().padStart(2, '0')
   const year = date.getFullYear()
   return `${day}.${month}.${year}`
+}
+
+// Функция для форматирования сумм с сокращениями
+const formatRevenue = (amount: number): string => {
+  if (amount >= 1000000) {
+    return `${(amount / 1000000).toFixed(1)} млн.`
+  } else if (amount >= 1000) {
+    return `${(amount / 1000).toFixed(1)} тыс.`
+  } else {
+    return amount.toLocaleString()
+  }
+}
+
+// Функция для генерации карточек дней в зависимости от фильтра
+const generateDailyCards = (dateFilter: string, dailyStats: any) => {
+  const now = new Date()
+  
+  switch (dateFilter) {
+    case 'today': {
+      const today = now.toLocaleDateString('ru-RU', { weekday: 'long' })
+      const todayStats = dailyStats[today] || { delivered: 0, canceled: 0, total: 0, revenue: 0 }
+      return [{ day: 'Сегодня', stats: todayStats }]
+    }
+    
+    case 'yesterday': {
+      const yesterday = new Date(now.getTime() - 24 * 60 * 60 * 1000)
+      const yesterdayDay = yesterday.toLocaleDateString('ru-RU', { weekday: 'long' })
+      const yesterdayStats = dailyStats[yesterdayDay] || { delivered: 0, canceled: 0, total: 0, revenue: 0 }
+      return [{ day: 'Вчера', stats: yesterdayStats }]
+    }
+    
+    case 'week': {
+      const dayOrder = ['понедельник', 'вторник', 'среда', 'четверг', 'пятница', 'суббота', 'воскресенье']
+      return dayOrder.map(day => ({
+        day: day.charAt(0).toUpperCase() + day.slice(1),
+        stats: dailyStats[day] || { delivered: 0, canceled: 0, total: 0, revenue: 0 }
+      }))
+    }
+    
+    case 'month': {
+      // Для месяца показываем календарный вид
+      const year = now.getFullYear()
+      const month = now.getMonth()
+      const firstDay = new Date(year, month, 1)
+      const lastDay = new Date(year, month + 1, 0)
+      const daysInMonth = lastDay.getDate()
+      
+      const calendarDays = []
+      for (let day = 1; day <= daysInMonth; day++) {
+        const date = new Date(year, month, day)
+        const dayName = date.toLocaleDateString('ru-RU', { weekday: 'long' })
+        const stats = dailyStats[dayName] || { delivered: 0, canceled: 0, total: 0, revenue: 0 }
+        
+        calendarDays.push({
+          day: day.toString(),
+          stats,
+          isToday: day === now.getDate(),
+          dayOfWeek: dayName
+        })
+      }
+      
+      return calendarDays
+    }
+    
+    default: {
+      // Для 'all' показываем все дни недели
+      const dayOrder = ['понедельник', 'вторник', 'среда', 'четверг', 'пятница', 'суббота', 'воскресенье']
+      return dayOrder.map(day => ({
+        day: day.charAt(0).toUpperCase() + day.slice(1),
+        stats: dailyStats[day] || { delivered: 0, canceled: 0, total: 0, revenue: 0 }
+      }))
+    }
+  }
 }
 
 const getTodayRange = (): string => {
@@ -132,8 +205,6 @@ export default function CourierDashboard() {
   const [showFilters, setShowFilters] = useState(false)
   const [priceMin, setPriceMin] = useState<string>('')
   const [priceMax, setPriceMax] = useState<string>('')
-  const [itemsMin, setItemsMin] = useState<string>('')
-  const [itemsMax, setItemsMax] = useState<string>('')
   const [dateFilter, setDateFilter] = useState<DateFilterType>('all')
 
   // Состояние для определения размера экрана
@@ -141,6 +212,11 @@ export default function CourierDashboard() {
   
   // Состояние для отслеживания недавнего изменения статуса
   const [recentStatusChange, setRecentStatusChange] = useState<boolean>(false)
+  
+  // Состояние для статистики
+  const [statistics, setStatistics] = useState<any>(null)
+  const [isLoadingStats, setIsLoadingStats] = useState(false)
+  const [customDateRange, setCustomDateRange] = useState<{start: string, end: string}>({start: '', end: ''})
 
   // Определяем размер экрана
   useEffect(() => {
@@ -178,8 +254,114 @@ export default function CourierDashboard() {
     { value: 'today', label: t('today') },
     { value: 'yesterday', label: t('yesterday') },
     { value: 'week', label: t('thisWeek') },
-    { value: 'month', label: t('thisMonth') }
+    { value: 'month', label: t('thisMonth') },
+    { value: 'year', label: 'Год' }
   ]
+
+
+  // Функция для автоматического заполнения полей дат при выборе готовых диапазонов
+  const handleDateFilterChange = useCallback((value: DateFilterType) => {
+    setDateFilter(value)
+    
+    const now = new Date()
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+    
+    // Функция для форматирования даты в локальном формате YYYY-MM-DD
+    const formatDateLocal = (date: Date) => {
+      const year = date.getFullYear()
+      const month = String(date.getMonth() + 1).padStart(2, '0')
+      const day = String(date.getDate()).padStart(2, '0')
+      return `${year}-${month}-${day}`
+    }
+    
+    switch (value) {
+      case 'today': {
+        const todayStr = formatDateLocal(today)
+        setCustomDateRange({ start: todayStr, end: todayStr })
+        break
+      }
+      case 'yesterday': {
+        const yesterday = new Date(today.getTime() - 24 * 60 * 60 * 1000)
+        const yesterdayStr = formatDateLocal(yesterday)
+        setCustomDateRange({ start: yesterdayStr, end: yesterdayStr })
+        break
+      }
+      case 'week': {
+        const dayOfWeek = now.getDay()
+        const weekStart = new Date(today)
+        weekStart.setDate(today.getDate() - (dayOfWeek === 0 ? 6 : dayOfWeek - 1))
+        const weekEnd = new Date(weekStart)
+        weekEnd.setDate(weekStart.getDate() + 6)
+        setCustomDateRange({ 
+          start: formatDateLocal(weekStart), 
+          end: formatDateLocal(weekEnd) 
+        })
+        break
+      }
+      case 'month': {
+        const monthStart = new Date(now.getFullYear(), now.getMonth(), 1)
+        const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0)
+        setCustomDateRange({ 
+          start: formatDateLocal(monthStart), 
+          end: formatDateLocal(monthEnd) 
+        })
+        break
+      }
+      case 'year': {
+        const yearStart = new Date(now.getFullYear(), 0, 1)
+        const yearEnd = new Date(now.getFullYear(), 11, 31)
+        setCustomDateRange({ 
+          start: formatDateLocal(yearStart), 
+          end: formatDateLocal(yearEnd) 
+        })
+        break
+      }
+      case 'all':
+      default:
+        setCustomDateRange({ start: '', end: '' })
+        break
+    }
+  }, [])
+
+  // Функция для загрузки статистики
+  const fetchStatistics = useCallback(async () => {
+    setIsLoadingStats(true)
+    try {
+      let url = `/api/courier/statistics`
+      const params = new URLSearchParams()
+      
+      // Всегда отправляем период, API сам определит диапазон дат
+      params.append('period', dateFilter)
+      
+      // Добавляем фильтры по цене
+      if (priceMin) {
+        params.append('priceMin', priceMin)
+      }
+      if (priceMax) {
+        params.append('priceMax', priceMax)
+      }
+      
+      if (params.toString()) {
+        url += `?${params.toString()}`
+      }
+      
+      console.log('📊 Загружаем статистику с параметрами:', { dateFilter, priceMin, priceMax })
+      
+      const response = await fetch(url)
+      const data = await response.json()
+      
+      if (data.success) {
+        setStatistics(data.data)
+        console.log('✅ Статистика загружена:', data.data.summary)
+      } else {
+        console.error('Ошибка загрузки статистики:', data.error)
+      }
+    } catch (error) {
+      console.error('Ошибка загрузки статистики:', error)
+    } finally {
+      setIsLoadingStats(false)
+    }
+  }, [dateFilter, priceMin, priceMax])
 
   // Функция для рендеринга карточек заказов
   const renderOrderCard = (order: OrderWithDetails) => {
@@ -206,6 +388,19 @@ export default function CourierDashboard() {
 
     return () => {
       window.removeEventListener('searchQueryChange', handleSearchChange as EventListener)
+    }
+  }, [])
+
+  // Слушаем события навигации к статистике из ProfileDropdown
+  useEffect(() => {
+    const handleNavigateToStats = () => {
+      setActiveTab('statistics')
+    }
+
+    window.addEventListener('navigateToStats', handleNavigateToStats as EventListener)
+
+    return () => {
+      window.removeEventListener('navigateToStats', handleNavigateToStats as EventListener)
     }
   }, [])
   
@@ -601,7 +796,7 @@ export default function CourierDashboard() {
         }
       }
       
-      if (tab && ['available', 'my', 'completed', 'canceled'].includes(tab)) {
+      if (tab && ['available', 'my', 'completed', 'canceled', 'statistics'].includes(tab)) {
         // Не переключаем вкладку, если недавно было изменение статуса
         if (!recentStatusChange) {
           console.log(`🔄 Переключение на вкладку "${tab}" из URL параметра`)
@@ -613,6 +808,14 @@ export default function CourierDashboard() {
     }
   }, [orders, searchParams, recentStatusChange])
 
+
+  // Загружаем статистику при переключении на вкладку статистики
+  // Загружаем статистику при переходе на вкладку статистики или изменении фильтров
+  useEffect(() => {
+    if (activeTab === 'statistics') {
+      fetchStatistics()
+    }
+  }, [activeTab, fetchStatistics, dateFilter, customDateRange, priceMin, priceMax])
 
   // Автоматическое обновление каждые 10 секунд
   useEffect(() => {
@@ -685,40 +888,14 @@ export default function CourierDashboard() {
     }
     
     // Применяем фильтр по дате
-    if (dateFilter !== 'all') {
-      const now = new Date()
-      const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
-      const yesterday = new Date(today)
-      yesterday.setDate(yesterday.getDate() - 1)
-      
-      // Для недели - текущая неделя (понедельник-воскресенье)
-      const dayOfWeek = now.getDay()
-      const weekStart = new Date(today)
-      weekStart.setDate(today.getDate() - (dayOfWeek === 0 ? 6 : dayOfWeek - 1))
-      const weekEnd = new Date(weekStart)
-      weekEnd.setDate(weekStart.getDate() + 6)
-      weekEnd.setHours(23, 59, 59, 999) // Конец воскресенья
-      
-      // Для месяца - текущий месяц
-      const monthStart = new Date(now.getFullYear(), now.getMonth(), 1)
-      const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0)
-      monthEnd.setHours(23, 59, 59, 999) // Конец последнего дня месяца
+    if (dateFilter !== 'all' && customDateRange.start && customDateRange.end) {
+      const startDate = new Date(customDateRange.start)
+      const endDate = new Date(customDateRange.end)
+      endDate.setHours(23, 59, 59, 999) // Конец дня
       
       filtered = filtered.filter(order => {
         const orderDate = new Date(order.updatedAt)
-        
-        switch (dateFilter) {
-          case 'today':
-            return orderDate >= today
-          case 'yesterday':
-            return orderDate >= yesterday && orderDate < today
-          case 'week':
-            return orderDate >= weekStart && orderDate <= weekEnd
-          case 'month':
-            return orderDate >= monthStart && orderDate <= monthEnd
-          default:
-            return true
-        }
+        return orderDate >= startDate && orderDate <= endDate
       })
     }
     
@@ -736,17 +913,6 @@ export default function CourierDashboard() {
       })
     }
     
-    // Применяем фильтр по количеству товаров
-    if (itemsMin || itemsMax) {
-      filtered = filtered.filter(order => {
-        const totalItems = order.orderItems.reduce((sum, item) => sum + item.amount, 0)
-        
-        const min = itemsMin ? Number(itemsMin) : 0
-        const max = itemsMax ? Number(itemsMax) : Infinity
-        
-        return totalItems >= min && totalItems <= max
-      })
-    }
     
     // Применяем сортировку
     filtered.sort((a, b) => {
@@ -774,7 +940,23 @@ export default function CourierDashboard() {
     })
     
     return filtered
-  }, [searchQuery, priceMin, priceMax, itemsMin, itemsMax, dateFilter, sortBy])
+  }, [searchQuery, priceMin, priceMax, dateFilter, sortBy, customDateRange])
+
+  // Функция для фильтрации заказов по периоду статистики
+  const filterOrdersByStatsPeriod = useCallback((ordersList: OrderWithDetails[]) => {
+    if (dateFilter !== 'all' && customDateRange.start && customDateRange.end) {
+      const startDate = new Date(customDateRange.start)
+      const endDate = new Date(customDateRange.end)
+      endDate.setHours(23, 59, 59, 999) // Конец дня
+      
+      return ordersList.filter(order => {
+        const orderDate = new Date(order.updatedAt)
+        return orderDate >= startDate && orderDate <= endDate
+      })
+    }
+    
+    return ordersList
+  }, [dateFilter, customDateRange])
 
   // Группируем заказы по статусам
   // Доступные заказы - только те, что админ подтвердил (COURIER_WAIT) и еще не назначены
@@ -803,6 +985,11 @@ export default function CourierDashboard() {
     orders.filter(order => 
       order.status === 'CANCELED' && order.courierId === currentCourierId
     )
+  )
+
+  // Заказы по периоду статистики (только мои заказы)
+  const statsOrders = filterOrdersByStatsPeriod(
+    orders.filter(order => order.courierId === currentCourierId)
   )
 
 
@@ -911,6 +1098,25 @@ export default function CourierDashboard() {
                 activeTab === 'canceled' ? 'bg-white/20' : 'bg-gray-700'
               }`}>
                 {canceledOrders.length}
+              </span>
+            </button>
+            
+            <button
+              onClick={() => setActiveTab('statistics')}
+              className={`w-full flex items-center justify-between px-4 py-3 rounded-xl transition-all duration-200 text-sm ${
+                activeTab === 'statistics'
+                  ? 'bg-gradient-to-r from-blue-500 to-blue-600 text-white shadow-lg'
+                  : 'text-gray-300 hover:bg-gray-700/50'
+              }`}
+            >
+              <div className="flex items-center space-x-3">
+                <ChartBarIcon className={`w-5 h-5 ${activeTab === 'statistics' ? 'text-white' : 'text-purple-400'}`} />
+                <span>{t('statistics') || 'Статистика'}</span>
+              </div>
+              <span className={`px-2 py-1 rounded text-sm ${
+                activeTab === 'statistics' ? 'bg-white/20' : 'bg-gray-700'
+              }`}>
+                📊
               </span>
             </button>
           </nav>
@@ -1027,16 +1233,18 @@ export default function CourierDashboard() {
                 <span className="hidden sm:inline">{t('filters')}</span>
               </button>
               
-              {/* Сортировка */}
-              <div className="flex items-center gap-1.5 sm:gap-2">
-                <CustomDropdown
-                  options={sortOptions}
-                  value={sortBy}
-                  onChange={(value) => setSortBy(value as SortType)}
-                  icon={ArrowsUpDownIcon}
-                  className="min-w-[140px] sm:min-w-[160px]"
-                />
-              </div>
+              {/* Сортировка - скрыта для статистики */}
+              {activeTab !== 'statistics' && (
+                <div className="flex items-center gap-1.5 sm:gap-2">
+                  <CustomDropdown
+                    options={sortOptions}
+                    value={sortBy}
+                    onChange={(value) => setSortBy(value as SortType)}
+                    icon={ArrowsUpDownIcon}
+                    className="min-w-[140px] sm:min-w-[160px]"
+                  />
+                </div>
+              )}
             </div>
             
             {/* Панель фильтров */}
@@ -1045,34 +1253,74 @@ export default function CourierDashboard() {
                 backgroundColor: 'var(--card-bg)',
                 borderColor: 'var(--border)'
               }}>
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                  {/* Фильтр по дате */}
-                  <div>
-                    <label className="flex items-center gap-2 text-sm mb-2 text-gray-400">
+                <div className="space-y-3">
+                  {/* Первая строка - названия */}
+                  <div className="grid grid-cols-4 gap-4">
+                    <div className="flex items-center gap-2 text-sm font-medium text-gray-300">
+                      <FunnelIcon className="w-4 h-4" />
+                      Фильтры
+                    </div>
+                    <div className="flex items-center gap-2 text-sm font-medium text-gray-300">
                       <CalendarIcon className="w-4 h-4" />
                       {t('period')}
-                    </label>
-                    <CustomDropdown
-                      options={dateFilterOptions}
-                      value={dateFilter}
-                      onChange={(value) => setDateFilter(value as DateFilterType)}
-                      icon={CalendarIcon}
-                    />
-                  </div>
-                  
-                  {/* Фильтр по цене */}
-                  <div>
-                    <label className="flex items-center gap-2 text-sm mb-2 text-gray-400">
+                    </div>
+                    <div className="flex items-center gap-2 text-sm font-medium text-gray-300">
                       <CurrencyDollarIcon className="w-4 h-4" />
                       {t('orderPrice')}
-                    </label>
-                    <div className="flex gap-2">
+                    </div>
+                    <div></div>
+                  </div>
+                  
+                  {/* Вторая строка - элементы управления */}
+                  <div className="grid grid-cols-4 gap-4 items-start">
+                    {/* Готовые фильтры */}
+                    <div className="h-8">
+                      <CustomDropdown
+                        options={dateFilterOptions}
+                        value={dateFilter}
+                        onChange={(value) => handleDateFilterChange(value as DateFilterType)}
+                        icon={CalendarIcon}
+                        className="w-full h-full"
+                      />
+                    </div>
+                    
+                    {/* Поля ввода дат */}
+                    <div className="flex gap-1 h-8">
+                      <input
+                        type="date"
+                        value={customDateRange.start}
+                        onChange={(e) => setCustomDateRange(prev => ({...prev, start: e.target.value}))}
+                        className="flex-1 h-full px-3 py-0 rounded text-xs border transition-all duration-200 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                        style={{
+                          backgroundColor: 'var(--background)',
+                          color: 'var(--foreground)',
+                          borderColor: 'var(--border)',
+                          minWidth: '120px'
+                        }}
+                      />
+                      <input
+                        type="date"
+                        value={customDateRange.end}
+                        onChange={(e) => setCustomDateRange(prev => ({...prev, end: e.target.value}))}
+                        className="flex-1 h-full px-3 py-0 rounded text-xs border transition-all duration-200 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                        style={{
+                          backgroundColor: 'var(--background)',
+                          color: 'var(--foreground)',
+                          borderColor: 'var(--border)',
+                          minWidth: '120px'
+                        }}
+                      />
+                    </div>
+                    
+                    {/* Поля ввода цен */}
+                    <div className="flex gap-1 h-8">
                       <input
                         type="number"
                         placeholder={t('from')}
                         value={priceMin}
                         onChange={(e) => setPriceMin(e.target.value)}
-                        className="w-full px-3 py-2 rounded-lg text-sm border transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        min="0"
+                        className="flex-1 h-full px-2 rounded text-xs border transition-all duration-200 focus:outline-none focus:ring-1 focus:ring-blue-500 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                         style={{
                           backgroundColor: 'var(--background)',
                           color: 'var(--foreground)',
@@ -1084,7 +1332,8 @@ export default function CourierDashboard() {
                         placeholder={t('to')}
                         value={priceMax}
                         onChange={(e) => setPriceMax(e.target.value)}
-                        className="w-full px-3 py-2 rounded-lg text-sm border transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        min="0"
+                        className="flex-1 h-full px-2 rounded text-xs border transition-all duration-200 focus:outline-none focus:ring-1 focus:ring-blue-500 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                         style={{
                           backgroundColor: 'var(--background)',
                           color: 'var(--foreground)',
@@ -1092,67 +1341,32 @@ export default function CourierDashboard() {
                         }}
                       />
                     </div>
-                  </div>
-                  
-                  {/* Фильтр по количеству товаров */}
-                  <div>
-                    <label className="flex items-center gap-2 text-sm mb-2 text-gray-400">
-                      <ShoppingBagIcon className="w-4 h-4" />
-                      {t('itemsCount')}
-                    </label>
-                    <div className="flex gap-2">
-                      <input
-                        type="number"
-                        placeholder={t('from')}
-                        value={itemsMin}
-                        onChange={(e) => setItemsMin(e.target.value)}
-                        className="w-full px-3 py-2 rounded-lg text-sm border transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        style={{
-                          backgroundColor: 'var(--background)',
-                          color: 'var(--foreground)',
-                          borderColor: 'var(--border)'
+                    
+                    {/* Кнопка сброса фильтров */}
+                    <div className="flex items-center justify-end h-8">
+                      <button
+                        onClick={() => {
+                          handleDateFilterChange('all')
+                          setPriceMin('')
+                          setPriceMax('')
                         }}
-                      />
-                      <input
-                        type="number"
-                        placeholder={t('to')}
-                        value={itemsMax}
-                        onChange={(e) => setItemsMax(e.target.value)}
-                        className="w-full px-3 py-2 rounded-lg text-sm border transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        style={{
-                          backgroundColor: 'var(--background)',
-                          color: 'var(--foreground)',
-                          borderColor: 'var(--border)'
-                        }}
-                      />
+                        disabled={dateFilter === 'all' && !priceMin && !priceMax && !customDateRange.start && !customDateRange.end}
+                        className={`h-full flex items-center justify-center gap-1 px-2 rounded text-xs transition-all duration-200 shadow-sm hover:shadow-md ${
+                          dateFilter === 'all' && !priceMin && !priceMax && !customDateRange.start && !customDateRange.end
+                            ? 'text-gray-400 bg-gray-200 dark:bg-gray-700 cursor-not-allowed'
+                            : 'text-white bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700'
+                        }`}
+                      >
+                        <ArrowsUpDownIcon className="w-3 h-3" />
+                        <span className="hidden sm:inline">{t('resetAll')}</span>
+                        <span className="sm:hidden">Сброс</span>
+                      </button>
                     </div>
-                  </div>
-                  
-                  {/* Кнопка сброса фильтров */}
-                  <div className="flex items-end">
-                    <button
-                      onClick={() => {
-                        setDateFilter('all')
-                        setPriceMin('')
-                        setPriceMax('')
-                        setItemsMin('')
-                        setItemsMax('')
-                      }}
-                      disabled={dateFilter === 'all' && !priceMin && !priceMax && !itemsMin && !itemsMax}
-                      className={`w-full flex items-center justify-center gap-2 px-4 py-2 rounded-lg text-sm transition-all duration-200 shadow-md hover:shadow-lg ${
-                        dateFilter === 'all' && !priceMin && !priceMax && !itemsMin && !itemsMax
-                          ? 'text-gray-400 bg-gray-200 dark:bg-gray-700 cursor-not-allowed'
-                          : 'text-white bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700'
-                      }`}
-                    >
-                      <ArrowsUpDownIcon className="w-4 h-4" />
-                      {t('resetAll')}
-                    </button>
                   </div>
                 </div>
                 
                 {/* Активные фильтры - показываем бейджи */}
-                {(dateFilter !== 'all' || priceMin || priceMax || itemsMin || itemsMax) && (
+                {(dateFilter !== 'all' || priceMin || priceMax || customDateRange.start || customDateRange.end) && (
                   <div className="mt-3 pt-3 border-t flex flex-wrap gap-2" style={{ borderColor: 'var(--border)' }}>
                     <span className="text-xs text-gray-400">{t('activeFilters')}</span>
                     
@@ -1173,12 +1387,6 @@ export default function CourierDashboard() {
                       </span>
                     )}
                     
-                    {(itemsMin || itemsMax) && (
-                      <span className="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400 text-xs">
-                        <ShoppingBagIcon className="w-3 h-3" />
-                        {itemsMin || '0'} - {itemsMax || '∞'} шт.
-                      </span>
-                    )}
                   </div>
                 )}
               </div>
@@ -1254,6 +1462,95 @@ export default function CourierDashboard() {
               )}
             </div>
           )}
+
+          {/* Статистика */}
+          {activeTab === 'statistics' && (
+            <div>
+              {isLoadingStats ? (
+                <div className="flex items-center justify-center min-h-64">
+                  <div className="text-center">
+                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+                    <p className="mt-4 text-gray-600">{t('loading')}</p>
+                  </div>
+                </div>
+              ) : statistics ? (
+                <div className="space-y-6">
+                  {/* Заголовок статистики */}
+                  <div className="flex items-center justify-between mb-6">
+                    <h2 className="text-xl font-semibold text-white">Статистика курьера</h2>
+                  </div>
+
+                  {/* KPI Карточки */}
+                    <div className="grid grid-cols-5 gap-4">
+                      {/* Доставлено */}
+                    <div className="bg-gray-800 rounded-xl p-4 border border-gray-700">
+                      <div className="flex items-center justify-between mb-2">
+                        <CheckCircleIcon className="w-6 h-6 text-green-400" />
+                        <span className="text-xs text-gray-400">Доставлено</span>
+                        </div>
+                      <div className="text-2xl font-bold text-white">{statistics.summary.completedOrders}</div>
+                      </div>
+                      
+                      {/* В пути */}
+                    <div className="bg-gray-800 rounded-xl p-4 border border-gray-700">
+                      <div className="flex items-center justify-between mb-2">
+                        <TruckIcon className="w-6 h-6 text-blue-400" />
+                        <span className="text-xs text-gray-400">В пути</span>
+                        </div>
+                      <div className="text-2xl font-bold text-white">{statistics.summary.inProgressOrders}</div>
+                      </div>
+                      
+                      {/* Отменено */}
+                    <div className="bg-gray-800 rounded-xl p-4 border border-gray-700">
+                      <div className="flex items-center justify-between mb-2">
+                        <XCircleIcon className="w-6 h-6 text-red-400" />
+                        <span className="text-xs text-gray-400">Отменено</span>
+                        </div>
+                      <div className="text-2xl font-bold text-white">{statistics.summary.canceledOrders}</div>
+                      </div>
+                      
+                      {/* Заработано */}
+                    <div className="bg-gray-800 rounded-xl p-4 border border-gray-700">
+                      <div className="flex items-center justify-between mb-2">
+                        <CurrencyDollarIcon className="w-6 h-6 text-orange-400" />
+                        <span className="text-xs text-gray-400">Заработано</span>
+                        </div>
+                      <div className="text-lg font-bold text-white">{statistics.summary.totalRevenue.toLocaleString()} сом</div>
+                      </div>
+                      
+                      {/* Всего заказов */}
+                    <div className="bg-gray-800 rounded-xl p-4 border border-gray-700">
+                      <div className="flex items-center justify-between mb-2">
+                        <ShoppingBagIcon className="w-6 h-6 text-purple-400" />
+                        <span className="text-xs text-gray-400">Всего заказов</span>
+                        </div>
+                      <div className="text-2xl font-bold text-white">{statistics.summary.totalOrders}</div>
+                    </div>
+                  </div>
+
+
+
+                  {/* Список заказов по периоду */}
+                  {statsOrders.length > 0 && (
+                    <div className="bg-gray-800 rounded-xl p-6 border border-gray-700">
+                      <h3 className="text-lg font-semibold mb-4 text-white">
+                        Заказы за выбранный период ({statsOrders.length})
+                      </h3>
+                      <div className={`${isMobile ? 'space-y-3' : 'space-y-2'}`}>
+                        {statsOrders.map(renderOrderCard)}
+                                  </div>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="bg-gray-800 rounded-xl p-12 text-center border border-gray-700">
+                  <ChartBarIcon className="w-16 h-16 text-purple-400 mx-auto mb-4" />
+                  <p className="text-lg text-gray-300">{t('noStatistics') || 'Статистика недоступна'}</p>
+                  <p className="text-sm mt-2 text-gray-400">{t('statisticsDescription') || 'Статистика будет доступна после выполнения первых заказов'}</p>
+                </div>
+              )}
+            </div>
+          )}
           </div>
         </div>
       </div>
@@ -1274,7 +1571,8 @@ export default function CourierDashboard() {
             { key: 'available', label: t('available'), icon: ClockIcon, count: availableOrders.length },
             { key: 'my', label: t('inWork'), icon: BoltIcon, count: myOrders.length },
             { key: 'completed', label: t('delivered'), icon: CheckCircleIcon, count: completedOrders.length },
-            { key: 'canceled', label: t('canceled'), icon: XCircleIcon, count: canceledOrders.length }
+            { key: 'canceled', label: t('canceled'), icon: XCircleIcon, count: canceledOrders.length },
+            { key: 'statistics', label: t('statistics') || 'Статистика', icon: ChartBarIcon, count: null }
           ].map(({ key, label, icon: Icon, count }) => (
             <button
               key={key}
@@ -1295,9 +1593,10 @@ export default function CourierDashboard() {
                     : key === 'available' ? 'text-yellow-400' :
                       key === 'my' ? 'text-blue-400' :
                       key === 'completed' ? 'text-green-400' :
-                      'text-red-400'
+                      key === 'canceled' ? 'text-red-400' :
+                      'text-purple-400'
                 }`} />
-                {count > 0 && (
+                {count !== null && count > 0 && (
                   <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 text-white text-xs rounded-full flex items-center justify-center">
                     {count > 9 ? '9+' : count}
                   </span>
