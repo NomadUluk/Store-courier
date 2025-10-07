@@ -12,7 +12,7 @@ const nextConfig: NextConfig = {
       },
       resolveAlias: {
         // Исключаем проблемные модули из Turbopack
-        'node-telegram-bot-api': false,
+        'node-telegram-bot-api': 'empty',
       },
     },
   },

@@ -115,7 +115,7 @@ export async function startTelegramPolling() {
     })
 
     // Обработчик команды /start
-    botInstance.onText(/\/start/, async (msg) => {
+    botInstance.onText(/\/start/, async (msg: any) => {
       const chatId = msg.chat.id.toString()
       logger.log(`📨 /start от пользователя ${chatId} (${msg.from?.first_name})`)
 
@@ -153,7 +153,7 @@ export async function startTelegramPolling() {
     })
 
     // Обработчик команды /help
-    botInstance.onText(/\/help/, async (msg) => {
+    botInstance.onText(/\/help/, async (msg: any) => {
       const chatId = msg.chat.id.toString()
       logger.log(`❓ /help от пользователя ${chatId}`)
 
@@ -179,7 +179,7 @@ export async function startTelegramPolling() {
     })
 
     // Обработчик контактов
-    botInstance.on('contact', async (msg) => {
+    botInstance.on('contact', async (msg: any) => {
       const chatId = msg.chat.id.toString()
       const contact = msg.contact
       
@@ -215,7 +215,7 @@ export async function startTelegramPolling() {
     })
 
     // Обработчик текстовых сообщений
-    botInstance.on('message', async (msg) => {
+    botInstance.on('message', async (msg: any) => {
       // Пропускаем сообщения, которые уже обработаны
       if (msg.text && (msg.text.startsWith('/') || msg.contact)) {
         return
@@ -265,7 +265,7 @@ export async function startTelegramPolling() {
     })
 
     // Обработчики ошибок
-    botInstance.on('polling_error', (error) => {
+    botInstance.on('polling_error', (error: any) => {
       console.error('🔴 Telegram polling error:', error.message)
       
       // Если это таймаут или сетевая ошибка, не перезапускаем
@@ -289,7 +289,7 @@ export async function startTelegramPolling() {
       console.log('📝 Ошибка polling зафиксирована, бот продолжает работу')
     })
 
-    botInstance.on('error', (error) => {
+    botInstance.on('error', (error: any) => {
       console.error('🔴 Telegram bot error:', error)
     })
 

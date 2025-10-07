@@ -1,4 +1,4 @@
-import { NextRequest } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { sendNewOrderNotification, sendOrderStatusUpdateNotification } from '@/lib/telegram'
 import type { OrderWithDetails } from '@/types'

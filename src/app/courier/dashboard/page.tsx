@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useState, useEffect, useCallback, useRef, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { CompactOrderCard } from '@/components/courier/CompactOrderCard'
 import { MobileOrderCard } from '@/components/courier/MobileOrderCard'
@@ -130,7 +130,8 @@ const getMonthRange = (): string => {
   return `${formatDate(firstDay)}-${formatDate(lastDay)}`
 }
 
-export default function CourierDashboard() {
+// Компонент для работы с searchParams
+function CourierDashboardContent() {
   logger.log('CourierDashboard: Компонент загружается')
   const { t } = useLanguage()
   const router = useRouter()
@@ -1848,5 +1849,21 @@ export default function CourierDashboard() {
         </div>
       </div>
     </div>
+  )
+}
+
+// Основной компонент с Suspense
+export default function CourierDashboard() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600 dark:text-gray-400">Загрузка...</p>
+        </div>
+      </div>
+    }>
+      <CourierDashboardContent />
+    </Suspense>
   )
 }

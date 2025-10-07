@@ -62,12 +62,12 @@ export interface OrderWithDetails extends Order {
     } 
   })[]
   // Явно добавляем поля, которые могут отсутствовать в сгенерированном типе Order
-  adminComment?: string | null
+  adminComment: string | null
 }
 
 // Расширяем тип Order для включения всех полей
 export interface ExtendedOrder extends Order {
-  adminComment?: string | null
+  adminComment: string | null
 }
 
 export interface OrderWithDetailsExtended extends ExtendedOrder {
