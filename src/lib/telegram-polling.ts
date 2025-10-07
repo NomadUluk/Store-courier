@@ -1,5 +1,6 @@
 import { getTelegramBotToken } from '@/lib/settings'
 import { registerCourierInTelegram } from '@/lib/telegram'
+import { logger } from '@/lib/logger'
 
 // Динамический импорт для совместимости с Turbopack
 let TelegramBot: any = null
@@ -42,23 +43,23 @@ async function checkBotStatus(token: string): Promise<boolean> {
     const getMePromise = testBot.getMe()
     
     const botInfo = await Promise.race([getMePromise, timeoutPromise])
-    console.log('✅ Бот доступен:', (botInfo as any)?.first_name || 'Unknown')
+    logger.log('✅ Бот доступен:', (botInfo as any)?.first_name || 'Unknown')
     return true
   } catch (error: any) {
-    console.log('⚠️ Ошибка проверки статуса бота:', error.message)
+    logger.log('⚠️ Ошибка проверки статуса бота:', error.message)
     
     // Если это таймаут или сетевая ошибка, считаем что бот недоступен
     if (error.message.includes('TIMEOUT') || 
         error.message.includes('ETIMEDOUT') || 
         error.message.includes('ENOTFOUND') ||
         error.message.includes('ECONNREFUSED')) {
-      console.log('🌐 Проблемы с сетью - пропускаем проверку')
+      logger.log('🌐 Проблемы с сетью - пропускаем проверку')
       return true // Пропускаем проверку при проблемах с сетью
     }
     
     // Если это конфликт 409, бот уже запущен где-то еще
     if (error.message.includes('409') || error.message.includes('Conflict')) {
-      console.log('⚠️ Бот уже запущен в другом месте (конфликт 409)')
+      logger.log('⚠️ Бот уже запущен в другом месте (конфликт 409)')
       return false
     }
     
@@ -71,28 +72,28 @@ export async function startTelegramPolling() {
   try {
     // Проверяем, не запущен ли уже бот
     if (botInstance || isPollingActive) {
-      console.log('⚠️ Бот уже запущен, пропускаем повторный запуск')
+      logger.log('⚠️ Бот уже запущен, пропускаем повторный запуск')
       return
     }
 
     const token = await getTelegramBotToken()
     if (!token) {
-      console.log('⚠️ Telegram bot token не найден, polling не запущен')
+      logger.log('⚠️ Telegram bot token не найден, polling не запущен')
       return
     }
 
     // Проверяем статус бота перед запуском
-    console.log('🔍 Проверка статуса бота...')
+    logger.log('🔍 Проверка статуса бота...')
     const isBotAvailable = await checkBotStatus(token)
     if (!isBotAvailable) {
-      console.log('❌ Бот недоступен или уже запущен в другом месте')
+      logger.log('❌ Бот недоступен или уже запущен в другом месте')
       return
     }
 
     // Webhook функциональность полностью удалена - используем только polling
-    console.log('✅ Используем только polling режим (webhook отключен)')
+    logger.log('✅ Используем только polling режим (webhook отключен)')
 
-    console.log('🚀 Запуск Telegram бота в режиме polling...')
+    logger.log('🚀 Запуск Telegram бота в режиме polling...')
 
     // Создаём новый экземпляр с улучшенными настройками сети
     const TelegramBotClass = await getTelegramBot()
@@ -116,7 +117,7 @@ export async function startTelegramPolling() {
     // Обработчик команды /start
     botInstance.onText(/\/start/, async (msg) => {
       const chatId = msg.chat.id.toString()
-      console.log(`📨 /start от пользователя ${chatId} (${msg.from?.first_name})`)
+      logger.log(`📨 /start от пользователя ${chatId} (${msg.from?.first_name})`)
 
       const welcomeMessage = `
 👋 Добро пожаловать!
@@ -154,7 +155,7 @@ export async function startTelegramPolling() {
     // Обработчик команды /help
     botInstance.onText(/\/help/, async (msg) => {
       const chatId = msg.chat.id.toString()
-      console.log(`❓ /help от пользователя ${chatId}`)
+      logger.log(`❓ /help от пользователя ${chatId}`)
 
       const helpMessage = `🆘 Помощь / Жардам
 

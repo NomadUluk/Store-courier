@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { verifyToken } from '@/lib/auth'
+import { logger } from '@/lib/logger'
 
 export async function GET(request: NextRequest) {
   try {
@@ -24,7 +25,7 @@ export async function GET(request: NextRequest) {
     const priceMin = searchParams.get('priceMin')
     const priceMax = searchParams.get('priceMax')
 
-    console.log('📊 Статистика запрошена:', { 
+    logger.log('📊 Статистика запрошена:', { 
       courierId: user.id, 
       period, 
       startDate, 
@@ -96,7 +97,7 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    console.log('🔍 Фильтр дат:', dateFilter)
+    logger.log('🔍 Фильтр дат:', dateFilter)
 
     // Получаем все заказы курьера за период
     const orders = await prisma.order.findMany({
@@ -115,7 +116,7 @@ export async function GET(request: NextRequest) {
       }
     })
 
-    console.log(`📦 Найдено заказов: ${orders.length}`)
+    logger.log(`📦 Найдено заказов: ${orders.length}`)
 
     // Фильтруем заказы по цене на стороне сервера
     let filteredOrders = orders
@@ -240,7 +241,7 @@ export async function GET(request: NextRequest) {
     })
 
   } catch (error) {
-    console.error('Error fetching courier statistics:', error)
+    logger.error('Error fetching courier statistics:', error)
     return NextResponse.json(
       { success: false, error: 'Internal server error' },
       { status: 500 }

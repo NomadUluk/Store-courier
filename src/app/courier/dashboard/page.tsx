@@ -8,9 +8,10 @@ import { OrderDetailModal } from '@/components/courier/OrderDetailModal'
 import { useLanguage } from '@/contexts/LanguageContext'
 import { useOrders } from '@/contexts/OrdersContext'
 import { CustomDropdown } from '@/components/ui/CustomDropdown'
-import { ClockIcon, BoltIcon, CheckCircleIcon, XCircleIcon, MagnifyingGlassIcon, FunnelIcon, ArrowsUpDownIcon, CalendarIcon, CurrencyDollarIcon, ShoppingBagIcon, ChartBarIcon, TruckIcon, ExclamationTriangleIcon } from '@heroicons/react/24/outline'
-import type { OrderWithDetails, OrderStatus, OrderItem, Product, Category, User } from '@/types'
+import { ClockIcon, BoltIcon, CheckCircleIcon, XCircleIcon, FunnelIcon, ArrowsUpDownIcon, CalendarIcon, CurrencyDollarIcon, ShoppingBagIcon, ChartBarIcon, TruckIcon } from '@heroicons/react/24/outline'
+import type { OrderWithDetails, OrderStatus } from '@/types'
 import { normalizePhoneForSearch, generatePhoneSearchVariants } from '@/lib/utils'
+import { logger } from '@/lib/logger'
 
 type TabType = 'available' | 'my' | 'completed' | 'canceled' | 'statistics'
 type SortType = 'date-new' | 'date-old' | 'price-high' | 'price-low' | 'items-high' | 'items-low'
@@ -130,7 +131,7 @@ const getMonthRange = (): string => {
 }
 
 export default function CourierDashboard() {
-  console.log('CourierDashboard: Компонент загружается')
+  logger.log('CourierDashboard: Компонент загружается')
   const { t } = useLanguage()
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -152,7 +153,7 @@ export default function CourierDashboard() {
     const handleGlobalError = (event: ErrorEvent) => {
       if (event.message.includes('message channel closed') || 
           event.message.includes('asynchronous response')) {
-        console.log('🔧 Игнорируем ошибку расширения браузера:', event.message)
+        logger.log('🔧 Игнорируем ошибку расширения браузера:', event.message)
         event.preventDefault()
         return false
       }
@@ -162,7 +163,7 @@ export default function CourierDashboard() {
       if (event.reason && event.reason.message && 
           (event.reason.message.includes('message channel closed') ||
            event.reason.message.includes('asynchronous response'))) {
-        console.log('🔧 Игнорируем ошибку расширения браузера:', event.reason.message)
+        logger.log('🔧 Игнорируем ошибку расширения браузера:', event.reason.message)
         event.preventDefault()
         return false
       }
@@ -349,19 +350,19 @@ export default function CourierDashboard() {
         url += `?${params.toString()}`
       }
       
-      console.log('📊 Загружаем статистику с параметрами:', { dateFilter, priceMin, priceMax })
+      logger.log('📊 Загружаем статистику с параметрами:', { dateFilter, priceMin, priceMax })
       
       const response = await fetch(url)
       const data = await response.json()
       
       if (data.success) {
         setStatistics(data.data)
-        console.log('✅ Статистика загружена:', data.data.summary)
+        logger.log('✅ Статистика загружена:', data.data.summary)
       } else {
-        console.error('Ошибка загрузки статистики:', data.error)
+        logger.error('Ошибка загрузки статистики:', data.error)
       }
     } catch (error) {
-      console.error('Ошибка загрузки статистики:', error)
+      logger.error('Ошибка загрузки статистики:', error)
     } finally {
       setIsLoadingStats(false)
     }
@@ -459,7 +460,7 @@ export default function CourierDashboard() {
   useEffect(() => {
     if ('Notification' in window && Notification.permission === 'default') {
       Notification.requestPermission().then(permission => {
-        console.log('🔔 Разрешение на уведомления:', permission)
+        logger.log('🔔 Разрешение на уведомления:', permission)
       })
     }
   }, [])
@@ -512,7 +513,7 @@ export default function CourierDashboard() {
             throw new Error('Сервер недоступен')
           }
         } catch (healthError) {
-          console.log('🌐 Сервер недоступен, пропускаем запрос заказов')
+          logger.log('🌐 Сервер недоступен, пропускаем запрос заказов')
           setIsServerOnline(false)
           if (showLoading) {
             setError('Сервер недоступен. Проверьте подключение к интернету.')
@@ -572,7 +573,7 @@ export default function CourierDashboard() {
           
           setIsInitialized(true)
           
-          console.log(`🔄 Инициализация: найдено ${availableOrders.length} доступных заказов, добавлены в notifiedOrderIds`)
+          logger.log(`🔄 Инициализация: найдено ${availableOrders.length} доступных заказов, добавлены в notifiedOrderIds`)
         } else {
           // Проверяем новые заказы только при автоматическом обновлении
           const availableOrders = newOrders.filter((order: OrderWithDetails) => 
@@ -586,8 +587,8 @@ export default function CourierDashboard() {
           const newOrderIds = Array.from(currentOrderIds).filter((id) => !previousOrderIdsRef.current.has(id as string))
           
           if (newOrderIds.length > 0) {
-            console.log(`🎯 Обнаружено ${newOrderIds.length} новых заказов:`, newOrderIds.map((id) => (id as string).slice(-8)))
-            console.log(`📊 Статистика: previousOrderIds=${previousOrderIds.size}, currentOrderIds=${currentOrderIds.size}, notifiedOrderIds=${notifiedOrderIds.size}`)
+            logger.log(`🎯 Обнаружено ${newOrderIds.length} новых заказов:`, newOrderIds.map((id) => (id as string).slice(-8)))
+            logger.log(`📊 Статистика: previousOrderIds=${previousOrderIds.size}, currentOrderIds=${currentOrderIds.size}, notifiedOrderIds=${notifiedOrderIds.size}`)
             
             // Получаем объекты заказов для новых ID
             const newOrdersToNotify = availableOrders.filter((order: OrderWithDetails) => newOrderIds.includes(order.id as string))
@@ -596,7 +597,7 @@ export default function CourierDashboard() {
             const ordersToNotify = newOrdersToNotify.filter((order: OrderWithDetails) => !notifiedOrderIdsRef.current.has(order.id as string))
             
             if (ordersToNotify.length > 0) {
-              console.log(`📤 Отправляем уведомления для ${ordersToNotify.length} заказов:`, ordersToNotify.map((o: OrderWithDetails) => (o.id as string).slice(-8)))
+              logger.log(`📤 Отправляем уведомления для ${ordersToNotify.length} заказов:`, ordersToNotify.map((o: OrderWithDetails) => (o.id as string).slice(-8)))
               
               // Отправляем браузерные уведомления для каждого нового заказа
               ordersToNotify.forEach((order: OrderWithDetails) => {
@@ -607,7 +608,7 @@ export default function CourierDashboard() {
                 
                 sendBrowserNotification(
                   '📦 Новый заказ!',
-                  `Заказ #${orderNumber}\nАдрес: ${order.deliveryAddress}\nСумма: ${totalAmount} сом`,
+                  `Заказ #${orderNumber}\nАдрес: ${order.deliveryAddress}\nСумма: ${totalAmount} ${t('som')}`,
                   '/favicon.ico'
                 )
               })
@@ -630,19 +631,19 @@ export default function CourierDashboard() {
                   clearTimeout(timeoutId)
                   
                   if (response.ok) {
-                    console.log('✅ Уведомление отправлено для заказа:', (order.id as string).slice(-8))
+                    logger.log('✅ Уведомление отправлено для заказа:', (order.id as string).slice(-8))
                     // Добавляем ID заказа в Set отправленных уведомлений
                     setNotifiedOrderIds(prev => new Set(prev).add(order.id as string))
                     return { success: true, orderId: order.id }
                   } else {
-                    console.error('❌ Ошибка отправки уведомления для заказа:', (order.id as string).slice(-8), response.status)
+                    logger.error('❌ Ошибка отправки уведомления для заказа:', (order.id as string).slice(-8), response.status)
                     return { success: false, orderId: order.id }
                   }
                 } catch (error) {
                   if (error instanceof Error && error.name === 'AbortError') {
-                    console.log('⏰ Таймаут отправки уведомления для заказа:', (order.id as string).slice(-8))
+                    logger.log('⏰ Таймаут отправки уведомления для заказа:', (order.id as string).slice(-8))
                   } else {
-                    console.error('❌ Ошибка отправки уведомления:', error)
+                    logger.error('❌ Ошибка отправки уведомления:', error)
                   }
                   return { success: false, orderId: order.id }
                 }
@@ -651,7 +652,7 @@ export default function CourierDashboard() {
               // Ждем завершения всех уведомлений
               await Promise.allSettled(notificationPromises)
             } else {
-              console.log('ℹ️ Все новые заказы уже имеют отправленные уведомления')
+              logger.log('ℹ️ Все новые заказы уже имеют отправленные уведомления')
             }
           }
           
@@ -661,23 +662,23 @@ export default function CourierDashboard() {
         }
       } else {
         setError(data.error || t('error'))
-        console.error('Ошибка API:', data.error)
+        logger.error('Ошибка API:', data.error)
       }
     } catch (error) {
       // Не логируем таймауты как ошибки, это нормальное поведение
       if (error instanceof Error && error.name === 'AbortError') {
-        console.log('⏰ Запрос был прерван (таймаут) - это нормально')
+        logger.log('⏰ Запрос был прерван (таймаут) - это нормально')
         return
       }
       
-      console.error('Ошибка загрузки заказов:', error)
+      logger.error('Ошибка загрузки заказов:', error)
       
       // Обрабатываем разные типы ошибок
       if (error instanceof Error) {
         if (error.name === 'TypeError' && error.message.includes('Failed to fetch')) {
-          console.log('🌐 Сервер недоступен - проверьте, что сервер запущен')
+          logger.log('🌐 Сервер недоступен - проверьте, что сервер запущен')
         } else {
-          console.log('❌ Неизвестная ошибка:', error.message)
+          logger.log('❌ Неизвестная ошибка:', error.message)
         }
       }
       
@@ -750,7 +751,7 @@ export default function CourierDashboard() {
         const targetTab = getTargetTab(status)
         
         // Принудительно переключаемся на нужную вкладку
-        console.log(`🔄 Переключаемся на вкладку "${targetTab}" для заказа ${orderId.slice(-8)} со статусом ${status}`)
+        logger.log(`🔄 Переключаемся на вкладку "${targetTab}" для заказа ${orderId.slice(-8)} со статусом ${status}`)
         setActiveTab(targetTab)
         
         // Устанавливаем флаг недавнего изменения статуса
@@ -782,7 +783,7 @@ export default function CourierDashboard() {
         addGlowEffect(orderId)
         
         // Локальное обновление уже выполнено выше, дополнительный запрос не нужен
-        console.log(`✅ Статус заказа ${orderId.slice(-8)} обновлен локально, переключение на вкладку "${targetTab}"`)
+        logger.log(`✅ Статус заказа ${orderId.slice(-8)} обновлен локально, переключение на вкладку "${targetTab}"`)
       } else {
         setError(data.error || t('error'))
       }
@@ -809,21 +810,21 @@ export default function CourierDashboard() {
       try {
         const response = await fetch('/api/courier/auth/verify')
         if (!response.ok) {
-          console.log('Токен недействителен, перенаправление на логин')
+          logger.log('Токен недействителен, перенаправление на логин')
           // Очищаем токен и перенаправляем
           document.cookie = 'auth-token=; Path=/; Expires=Thu, 01 Jan 1970 00:00:01 GMT;'
           router.push('/courier/login')
           return
         }
         const data = await response.json()
-        console.log('Токен действителен:', data)
+        logger.log('Токен действителен:', data)
         // Сохраняем ID текущего курьера
         if (data.success && data.data?.id) {
           setCurrentCourierId(data.data.id)
         }
         fetchOrdersAndCheckNew()
       } catch (error) {
-        console.error('Ошибка проверки авторизации:', error)
+        logger.error('Ошибка проверки авторизации:', error)
         // Проверяем, не происходит ли выход из системы
         const isLoggingOut = window.location.href.includes('logout') || 
                            document.cookie.includes('auth-token=;') ||
@@ -858,10 +859,10 @@ export default function CourierDashboard() {
       if (tab && ['available', 'my', 'completed', 'canceled', 'statistics'].includes(tab)) {
         // Не переключаем вкладку, если недавно было изменение статуса
         if (!recentStatusChange) {
-          console.log(`🔄 Переключение на вкладку "${tab}" из URL параметра`)
+          logger.log(`🔄 Переключение на вкладку "${tab}" из URL параметра`)
           setActiveTab(tab as TabType)
         } else {
-          console.log(`⏸️ Пропускаем переключение на "${tab}" из-за недавнего изменения статуса`)
+          logger.log(`⏸️ Пропускаем переключение на "${tab}" из-за недавнего изменения статуса`)
         }
       }
     }
@@ -907,7 +908,7 @@ export default function CourierDashboard() {
       
       // Обновляем Set только если что-то изменилось
       if (updatedNotifiedIds.size !== notifiedOrderIds.size) {
-        console.log(`🧹 Очищено ${notifiedOrderIds.size - updatedNotifiedIds.size} старых ID из списка отправленных уведомлений`)
+        logger.log(`🧹 Очищено ${notifiedOrderIds.size - updatedNotifiedIds.size} старых ID из списка отправленных уведомлений`)
         setNotifiedOrderIds(updatedNotifiedIds)
       }
     }
@@ -1191,7 +1192,7 @@ export default function CourierDashboard() {
             >
               <div className="flex items-center space-x-3">
                 <ChartBarIcon className={`w-5 h-5 ${activeTab === 'statistics' ? 'text-white' : 'text-purple-400'}`} />
-                <span>{t('statistics') || 'Статистика'}</span>
+                <span>{t('statistics')}</span>
               </div>
               <span className={`px-2 py-1 rounded text-sm ${
                 activeTab === 'statistics' ? 'bg-white/20' : 'bg-gray-700'
@@ -1263,7 +1264,7 @@ export default function CourierDashboard() {
                    activeTab === 'my' ? t('inWork') :
                    activeTab === 'completed' ? t('delivered') :
                    activeTab === 'canceled' ? t('canceled') :
-                   t('statistics') || 'Статистика'}
+                   t('statistics')}
                 </span>
               </div>
             </div>
@@ -1292,14 +1293,14 @@ export default function CourierDashboard() {
               {/* Кнопка фильтров */}
               <button
                 onClick={() => setShowFilters(!showFilters)}
-                className={`flex items-center gap-1.5 sm:gap-2 px-2 sm:px-3 py-1.5 sm:py-2 rounded-lg text-xs sm:text-sm transition-all duration-200 ${
+                className={`flex items-center gap-1.5 sm:gap-2 px-3 py-2 rounded-lg text-sm transition-all duration-200 min-w-[140px] sm:min-w-[160px] ${
                   showFilters 
                     ? 'bg-blue-500 text-white shadow-md' 
                     : 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'
                 }`}
               >
-                <FunnelIcon className="w-3 h-3 sm:w-4 sm:h-4" />
-                <span className="hidden sm:inline">{t('filters')}</span>
+                <FunnelIcon className="w-4 h-4" />
+                <span>{t('filters')}</span>
               </button>
               
               {/* Сортировка - скрыта для статистики */}
@@ -1329,7 +1330,7 @@ export default function CourierDashboard() {
                     <div>
                       <div className="flex items-center gap-2 text-sm font-medium text-gray-300 mb-2">
                         <FunnelIcon className="w-4 h-4" />
-                        Фильтры
+                        {t('filters')}
                       </div>
                       <CustomDropdown
                         options={dateFilterOptions}
@@ -1374,7 +1375,7 @@ export default function CourierDashboard() {
                       <div className="flex gap-1 h-8">
                         <input
                           type="number"
-                          placeholder="От"
+                          placeholder={t('from')}
                           value={priceMin || ''}
                           onChange={(e) => setPriceMin(e.target.value)}
                           className="w-36.5 px-2 py-1 text-xs border rounded"
@@ -1382,7 +1383,7 @@ export default function CourierDashboard() {
                         />
                         <input
                           type="number"
-                          placeholder="До"
+                          placeholder={t('to')}
                           value={priceMax || ''}
                           onChange={(e) => setPriceMax(e.target.value)}
                           className="w-36.5 px-2 py-1 text-xs border rounded"
@@ -1398,7 +1399,7 @@ export default function CourierDashboard() {
                     <div className="grid grid-cols-4 gap-4">
                       <div className="flex items-center gap-2 text-sm font-medium text-gray-300">
                         <FunnelIcon className="w-4 h-4" />
-                        Фильтры
+                        {t('filters')}
                       </div>
                       <div className="flex items-center gap-2 text-sm font-medium text-gray-300">
                         <CalendarIcon className="w-4 h-4" />
@@ -1499,7 +1500,7 @@ export default function CourierDashboard() {
                       >
                         <ArrowsUpDownIcon className="w-3 h-3" />
                         <span className="hidden sm:inline">{t('resetAll')}</span>
-                        <span className="sm:hidden">Сброс</span>
+                        <span className="sm:hidden">{t('resetAll')}</span>
                       </button>
                     </div>
                   </div>
@@ -1524,7 +1525,7 @@ export default function CourierDashboard() {
                     {(priceMin || priceMax) && (
                       <span className="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 text-xs">
                         <CurrencyDollarIcon className="w-3 h-3" />
-                        {priceMin || '0'} - {priceMax || '∞'} сом
+                        {priceMin || '0'} - {priceMax || '∞'} {t('som')}
                       </span>
                     )}
                     
@@ -1580,8 +1581,8 @@ export default function CourierDashboard() {
               ) : (
                 <div className="card p-12 text-center">
                   <CheckCircleIcon className="w-16 h-16 text-green-300 mx-auto mb-4" />
-                  <p className="text-lg" style={{ color: 'var(--muted)' }}>{t('noCompletedOrders') || 'Завершенных заказов пока нет'}</p>
-                  <p className="text-sm mt-2" style={{ color: 'var(--muted)' }}>{t('completedOrdersHere') || 'Завершенные заказы будут отображаться здесь'}</p>
+                  <p className="text-lg" style={{ color: 'var(--muted)' }}>{t('noCompletedOrders')}</p>
+                  <p className="text-sm mt-2" style={{ color: 'var(--muted)' }}>{t('completedOrdersHere')}</p>
                 </div>
               )}
             </div>
@@ -1597,8 +1598,8 @@ export default function CourierDashboard() {
               ) : (
                 <div className="card p-12 text-center">
                   <XCircleIcon className="w-16 h-16 text-red-300 mx-auto mb-4" />
-                  <p className="text-lg" style={{ color: 'var(--muted)' }}>{t('noCanceledOrders') || 'Отмененных заказов пока нет'}</p>
-                  <p className="text-sm mt-2" style={{ color: 'var(--muted)' }}>{t('canceledOrdersHere') || 'Отмененные заказы будут отображаться здесь'}</p>
+                  <p className="text-lg" style={{ color: 'var(--muted)' }}>{t('noCanceledOrders')}</p>
+                  <p className="text-sm mt-2" style={{ color: 'var(--muted)' }}>{t('canceledOrdersHere')}</p>
                 </div>
               )}
             </div>
@@ -1618,7 +1619,7 @@ export default function CourierDashboard() {
                 <div className="space-y-6">
                   {/* Заголовок статистики */}
                   <div className="flex items-center justify-between mb-6">
-                    <h2 className="text-xl font-semibold text-white">Статистика курьера</h2>
+                    <h2 className="text-xl font-semibold text-white">{t('courierStatistics')}</h2>
                   </div>
 
                   {/* KPI Карточки */}
@@ -1635,7 +1636,7 @@ export default function CourierDashboard() {
                                 <div className="text-lg font-bold text-white">{statistics.summary.completedOrders}</div>
                               </div>
                               <div className="text-right mt-auto">
-                                <div className="text-xs text-gray-400">Доставлено</div>
+                                <div className="text-xs text-gray-400">{t('delivered')}</div>
                               </div>
                             </div>
                           </div>
@@ -1648,7 +1649,7 @@ export default function CourierDashboard() {
                                 <div className="text-lg font-bold text-white">{statistics.summary.inProgressOrders}</div>
                               </div>
                               <div className="text-right mt-auto">
-                                <div className="text-xs text-gray-400">В пути</div>
+                                <div className="text-xs text-gray-400">{t('statisticsInProgress')}</div>
                               </div>
                             </div>
                           </div>
@@ -1661,7 +1662,7 @@ export default function CourierDashboard() {
                                 <div className="text-lg font-bold text-white">{statistics.summary.canceledOrders}</div>
                               </div>
                               <div className="text-right mt-auto">
-                                <div className="text-xs text-gray-400">Отменено</div>
+                                <div className="text-xs text-gray-400">{t('canceledOrders')}</div>
                               </div>
                             </div>
                           </div>
@@ -1674,10 +1675,10 @@ export default function CourierDashboard() {
                             <div className="flex flex-col h-full">
                               <div className="flex items-start justify-between mb-2">
                                 <CurrencyDollarIcon className="w-6 h-6 text-orange-400/60" />
-                                <div className="text-sm font-bold text-white">{statistics.summary.totalRevenue.toLocaleString()} сом</div>
+                                <div className="text-sm font-bold text-white">{statistics.summary.totalRevenue.toLocaleString()} {t('som')}</div>
                               </div>
                               <div className="text-right mt-auto">
-                                <div className="text-xs text-gray-400">Заработано</div>
+                                <div className="text-xs text-gray-400">{t('statisticsEarned')}</div>
                               </div>
                             </div>
                           </div>
@@ -1690,7 +1691,7 @@ export default function CourierDashboard() {
                                 <div className="text-lg font-bold text-white">{statistics.summary.totalOrders}</div>
                               </div>
                               <div className="text-right mt-auto">
-                                <div className="text-xs text-gray-400">Всего заказов</div>
+                                <div className="text-xs text-gray-400">{t('totalOrders')}</div>
                               </div>
                             </div>
                           </div>
@@ -1708,7 +1709,7 @@ export default function CourierDashboard() {
                                 <div className="text-2xl font-bold text-white">{statistics.summary.completedOrders}</div>
                               </div>
                               <div className="text-right mt-auto">
-                                <div className="text-xs text-gray-400">Доставлено</div>
+                                <div className="text-xs text-gray-400">{t('delivered')}</div>
                               </div>
                             </div>
                           </div>
@@ -1721,7 +1722,7 @@ export default function CourierDashboard() {
                                 <div className="text-2xl font-bold text-white">{statistics.summary.inProgressOrders}</div>
                               </div>
                               <div className="text-right mt-auto">
-                                <div className="text-xs text-gray-400">В пути</div>
+                                <div className="text-xs text-gray-400">{t('statisticsInProgress')}</div>
                               </div>
                             </div>
                           </div>
@@ -1734,7 +1735,7 @@ export default function CourierDashboard() {
                                 <div className="text-2xl font-bold text-white">{statistics.summary.canceledOrders}</div>
                               </div>
                               <div className="text-right mt-auto">
-                                <div className="text-xs text-gray-400">Отменено</div>
+                                <div className="text-xs text-gray-400">{t('canceledOrders')}</div>
                               </div>
                             </div>
                           </div>
@@ -1744,10 +1745,10 @@ export default function CourierDashboard() {
                             <div className="flex flex-col h-full">
                               <div className="flex items-start justify-between mb-2">
                                 <CurrencyDollarIcon className="w-6 h-6 text-orange-400/60" />
-                                <div className="text-lg font-bold text-white">{statistics.summary.totalRevenue.toLocaleString()} сом</div>
+                                <div className="text-lg font-bold text-white">{statistics.summary.totalRevenue.toLocaleString()} {t('som')}</div>
                               </div>
                               <div className="text-right mt-auto">
-                                <div className="text-xs text-gray-400">Заработано</div>
+                                <div className="text-xs text-gray-400">{t('statisticsEarned')}</div>
                               </div>
                             </div>
                           </div>
@@ -1760,7 +1761,7 @@ export default function CourierDashboard() {
                                 <div className="text-2xl font-bold text-white">{statistics.summary.totalOrders}</div>
                               </div>
                               <div className="text-right mt-auto">
-                                <div className="text-xs text-gray-400">Всего заказов</div>
+                                <div className="text-xs text-gray-400">{t('totalOrders')}</div>
                               </div>
                             </div>
                           </div>
@@ -1774,7 +1775,7 @@ export default function CourierDashboard() {
                   {statsOrders.length > 0 && (
                     <div className="bg-gray-800 rounded-xl p-6 border border-gray-700">
                       <h3 className="text-lg font-semibold mb-4 text-white">
-                        Заказы за выбранный период ({statsOrders.length})
+                        {t('ordersForPeriod')} ({statsOrders.length})
                       </h3>
                       <div className={`${isMobile ? 'space-y-3' : 'space-y-2'}`}>
                         {statsOrders.map(renderOrderCard)}
@@ -1785,8 +1786,8 @@ export default function CourierDashboard() {
               ) : (
                 <div className="bg-gray-800 rounded-xl p-12 text-center border border-gray-700">
                   <ChartBarIcon className="w-16 h-16 text-purple-400 mx-auto mb-4" />
-                  <p className="text-lg text-gray-300">{t('noStatistics') || 'Статистика недоступна'}</p>
-                  <p className="text-sm mt-2 text-gray-400">{t('statisticsDescription') || 'Статистика будет доступна после выполнения первых заказов'}</p>
+                  <p className="text-lg text-gray-300">{t('noStatistics')}</p>
+                  <p className="text-sm mt-2 text-gray-400">{t('statisticsDescription')}</p>
                 </div>
               )}
             </div>

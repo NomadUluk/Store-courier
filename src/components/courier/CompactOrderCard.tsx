@@ -14,6 +14,15 @@ interface CompactOrderCardProps {
 export function CompactOrderCard({ order, onClick, isGlowing = false, searchQuery = '', highlightText }: CompactOrderCardProps) {
   const { t } = useLanguage()
   
+  // Функция для форматирования сумм с сокращениями
+  const formatAmount = (amount: number): string => {
+    if (amount >= 100000) {
+      return `${(amount / 1000).toFixed(0)} тыс.`
+    } else {
+      return amount.toLocaleString('ru-RU')
+    }
+  }
+  
   const getStatusBadge = (status: OrderStatus) => {
     const statusConfig = {
       CREATED: { label: t('created'), color: 'bg-gray-500/20 text-gray-300' },
@@ -21,7 +30,7 @@ export function CompactOrderCard({ order, onClick, isGlowing = false, searchQuer
       COURIER_PICKED: { label: t('courierPicked'), color: 'bg-blue-500/20 text-blue-400' },
       ENROUTE: { label: t('enroute'), color: 'bg-orange-500/20 text-orange-400' },
       DELIVERED: { label: t('deliveredStatus'), color: 'bg-green-500/20 text-green-400' },
-      CANCELED: { label: t('canceled'), color: 'bg-red-500/20 text-red-400' }
+      CANCELED: { label: t('canceledOrders'), color: 'bg-red-500/20 text-red-400' }
     }
     
     const config = statusConfig[status]
@@ -114,7 +123,7 @@ export function CompactOrderCard({ order, onClick, isGlowing = false, searchQuer
           </span>
         </div>
         <div className="text-base lg:text-lg gradient-text">
-          {totalAmount.toLocaleString('ru-RU')} сом
+          {formatAmount(totalAmount)} {t('som')}
         </div>
       </div>
 

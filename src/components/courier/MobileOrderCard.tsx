@@ -14,6 +14,15 @@ interface MobileOrderCardProps {
 export function MobileOrderCard({ order, onClick, isGlowing = false, searchQuery = '', highlightText }: MobileOrderCardProps) {
   const { t } = useLanguage()
   
+  // Функция для форматирования сумм с сокращениями
+  const formatAmount = (amount: number): string => {
+    if (amount >= 100000) {
+      return `${(amount / 1000).toFixed(0)} тыс.`
+    } else {
+      return amount.toLocaleString('ru-RU')
+    }
+  }
+  
   const getStatusBadge = (status: OrderStatus) => {
     const statusConfig = {
       CREATED: { label: t('created'), color: 'bg-gray-500/20 text-gray-300' },
@@ -21,7 +30,7 @@ export function MobileOrderCard({ order, onClick, isGlowing = false, searchQuery
       COURIER_PICKED: { label: t('courierPicked'), color: 'bg-blue-500/20 text-blue-400' },
       ENROUTE: { label: t('enroute'), color: 'bg-orange-500/20 text-orange-400' },
       DELIVERED: { label: t('deliveredStatus'), color: 'bg-green-500/20 text-green-400' },
-      CANCELED: { label: t('canceled'), color: 'bg-red-500/20 text-red-400' }
+      CANCELED: { label: t('canceledOrders'), color: 'bg-red-500/20 text-red-400' }
     }
     
     const config = statusConfig[status]
@@ -63,10 +72,10 @@ export function MobileOrderCard({ order, onClick, isGlowing = false, searchQuery
           </div>
           <div className="text-right">
             <div className="text-base font-semibold gradient-text">
-              {totalAmount.toLocaleString('ru-RU')} сом
+              {formatAmount(totalAmount)} {t('som')}
             </div>
             <div className="text-xs text-gray-400">
-              {totalItems} {totalItems === 1 ? 'товар' : totalItems < 5 ? 'товара' : 'товаров'}
+              {totalItems} {totalItems === 1 ? t('item') : totalItems < 5 ? t('items2') : t('items')}
             </div>
           </div>
         </div>
@@ -77,7 +86,7 @@ export function MobileOrderCard({ order, onClick, isGlowing = false, searchQuery
         <div className="space-y-2">
           {/* Дата */}
           <div className="flex items-center justify-between">
-            <span className="text-xs text-gray-400">Дата</span>
+            <span className="text-xs text-gray-400">{t('date')}</span>
             <span className="text-xs text-white">
               {new Date(order.updatedAt).toLocaleDateString('ru-RU', { 
                 day: '2-digit', 
@@ -91,7 +100,7 @@ export function MobileOrderCard({ order, onClick, isGlowing = false, searchQuery
           {/* Клиент (если не COURIER_WAIT) */}
           {order.status !== 'COURIER_WAIT' && (
             <div className="flex items-center justify-between">
-              <span className="text-xs text-gray-400">Клиент</span>
+              <span className="text-xs text-gray-400">{t('client')}</span>
               <span className="text-xs text-white truncate max-w-[120px]">
                 {highlightText ? highlightText(order.customerName || '', searchQuery) : order.customerName}
               </span>
@@ -101,7 +110,7 @@ export function MobileOrderCard({ order, onClick, isGlowing = false, searchQuery
           {/* Телефон (если не COURIER_WAIT) */}
           {order.status !== 'COURIER_WAIT' && (
             <div className="flex items-center justify-between">
-              <span className="text-xs text-gray-400">Телефон</span>
+              <span className="text-xs text-gray-400">{t('phone')}</span>
               <span className="text-xs text-gray-400 select-none">
                 {highlightText ? highlightText(order.customerPhone || '', searchQuery) : order.customerPhone}
               </span>
@@ -110,7 +119,7 @@ export function MobileOrderCard({ order, onClick, isGlowing = false, searchQuery
 
           {/* Адрес */}
           <div className="flex items-start justify-between">
-            <span className="text-xs text-gray-400">Адрес</span>
+            <span className="text-xs text-gray-400">{t('address')}</span>
             <div className="text-right flex-1 ml-2">
               <span className="text-xs text-white leading-tight line-clamp-2 text-right select-none w-full">
                 {highlightText ? highlightText(order.deliveryAddress || '', searchQuery) : order.deliveryAddress}
@@ -121,7 +130,7 @@ export function MobileOrderCard({ order, onClick, isGlowing = false, searchQuery
           {/* Комментарий (если есть) */}
           {(order.customerComment || order.cancelComment || order.adminComment) && (
             <div className="flex items-center justify-between">
-              <span className="text-xs text-gray-400">Комментарий</span>
+              <span className="text-xs text-gray-400">{t('comment')}</span>
               <div className="flex items-center justify-center w-5 h-5 rounded bg-blue-50 dark:bg-blue-500/10">
                 <svg className="w-3 h-3 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-1l-4 4z" />

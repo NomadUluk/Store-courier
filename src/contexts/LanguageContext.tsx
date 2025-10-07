@@ -77,6 +77,11 @@ const translations = {
     'activityByDays': 'Активность по дням недели',
     'noStatistics': 'Статистика недоступна',
     'statisticsDescription': 'Статистика будет доступна после выполнения первых заказов',
+    'courierStatistics': 'Статистика курьера',
+    'ordersForPeriod': 'Заказы за выбранный период',
+    'statisticsInProgress': 'В пути',
+    'statisticsEarned': 'Заработано',
+    'som': 'сом',
   
     'showAllCompleted': 'Показать все завершенные заказы',
     
@@ -86,7 +91,6 @@ const translations = {
     'courierPicked': 'Принят',
     'enroute': 'В пути',
     'deliveredStatus': 'Доставлен',
-    'canceled': 'Отменен',
     
     // Действия
     'acceptOrder': 'Принять заказ',
@@ -194,7 +198,9 @@ const translations = {
     'enterNewName': 'Введите новое имя',
     'saving': 'Сохранение...',
     'connectionError': 'Ошибка подключения к серверу',
-    'searchOrders': 'Поиск по заказам (ID, адрес, имя, телефон, товары...)'
+    'searchOrders': 'Поиск по заказам (ID, адрес, имя, телефон, товары...)',
+    'lastUpdated': 'Обновлен',
+    'date': 'Дата'
   },
   ky: {
     // Общие
@@ -263,6 +269,11 @@ const translations = {
     'activityByDays': 'Жума күндөрү боюнча активдүүлүк',
     'noStatistics': 'Статистика жеткиликтүү эмес',
     'statisticsDescription': 'Статистика биринчи буйрутмаларды аткаруудан кийин жеткиликтүү болот',
+    'courierStatistics': 'Курьердин статистикасы',
+    'ordersForPeriod': 'Тандалган мезгилдеги буйрутмалар',
+    'statisticsInProgress': 'Жолдо',
+    'statisticsEarned': 'Табылды',
+    'som': 'сом',
     
     // Статусы заказов
     'created': 'Түзүлдү',
@@ -270,7 +281,6 @@ const translations = {
     'courierPicked': 'Кабыл алынды',
     'enroute': 'Жолдо',
     'deliveredStatus': 'Жеткирилди',
-    'canceled': 'Жокко чыгарылды',
     
     // Действия
     'acceptOrder': 'Буйрутманы кабыл алуу',
@@ -347,6 +357,8 @@ const translations = {
     'saving': 'Сактоодо...',
     'connectionError': 'Серверге туташуу катасы',
     'searchOrders': 'Буйрутмаларды издөө (ID, дарек, ат, телефон, товарлар...)',
+    'lastUpdated': 'Жаңыланды',
+    'date': 'Күн',
     
     // Фильтры и сортировка
     'filters': 'Фильтрлер',

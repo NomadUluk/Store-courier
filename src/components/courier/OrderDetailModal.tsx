@@ -187,7 +187,7 @@ export function OrderDetailModal({
                     <svg className="w-3 h-3 text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                     </svg>
-                    <span>Создан: {new Date(order.createdAt).toLocaleString('ru-RU', {
+                    <span>{t('created')}: {new Date(order.createdAt).toLocaleString('ru-RU', {
                       day: '2-digit',
                       month: '2-digit',
                       hour: '2-digit',
@@ -198,7 +198,7 @@ export function OrderDetailModal({
                     <svg className="w-3 h-3 text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
                     </svg>
-                    <span>Обновлен: {new Date(order.updatedAt).toLocaleString('ru-RU', {
+                    <span>{t('lastUpdated')}: {new Date(order.updatedAt).toLocaleString('ru-RU', {
                       day: '2-digit',
                       month: '2-digit',
                       hour: '2-digit',
