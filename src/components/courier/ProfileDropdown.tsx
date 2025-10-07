@@ -2,7 +2,6 @@
 
 import { useState, useRef, useEffect } from 'react'
 import { useLanguage } from '@/contexts/LanguageContext'
-import { ChartBarIcon } from '@heroicons/react/24/outline'
 
 interface ProfileDropdownProps {
   isOpen: boolean
@@ -125,26 +124,6 @@ export function ProfileDropdown({ isOpen, onClose, anchorRef }: ProfileDropdownP
                 </div>
               </div>
 
-              {/* Кнопка статистики - только для мобильных устройств */}
-              {isMobile && (
-                <div className="mt-4">
-                  <button
-                    onClick={() => {
-                      // Отправляем событие для переключения на статистику
-                      window.dispatchEvent(new CustomEvent('navigateToStats'))
-                      onClose()
-                    }}
-                    className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-lg text-sm font-medium transition-all duration-200 hover:shadow-md"
-                    style={{
-                      backgroundColor: 'var(--primary)',
-                      color: 'var(--primary-foreground)'
-                    }}
-                  >
-                    <ChartBarIcon className="w-5 h-5" />
-                    <span>{t('statistics') || 'Статистика'}</span>
-                  </button>
-                </div>
-              )}
             </>
           )}
         </div>

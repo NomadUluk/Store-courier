@@ -106,13 +106,11 @@ model Order {
   status          OrderStatus @default(CREATED)
   customerComment String?     @map("customer_comment")
   cancelComment   String?     @map("cancel_comment")
-  adminComment    String?     @map("admin_comment")
   createdAt       DateTime    @default(now()) @map("created_at")
   updatedAt       DateTime    @updatedAt @map("updated_at")
-
-  // Связи
-  courier    User?       @relation("CourierOrders", fields: [courierId], references: [id])
-  orderItems OrderItem[]
+  adminComment    String?     @map("admin_comment")
+  orderItems      OrderItem[]
+  courier         User?       @relation("CourierOrders", fields: [courierId], references: [id])
 
   @@map("orders")
 }

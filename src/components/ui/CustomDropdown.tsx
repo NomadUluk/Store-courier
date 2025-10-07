@@ -15,6 +15,7 @@ interface CustomDropdownProps {
   placeholder?: string
   className?: string
   icon?: React.ComponentType<{ className?: string }>
+  isMobile?: boolean
 }
 
 export function CustomDropdown({
@@ -23,7 +24,8 @@ export function CustomDropdown({
   onChange,
   placeholder = 'Выберите...',
   className = '',
-  icon: Icon
+  icon: Icon,
+  isMobile = false
 }: CustomDropdownProps) {
   const [isOpen, setIsOpen] = useState(false)
   const dropdownRef = useRef<HTMLDivElement>(null)
@@ -55,9 +57,9 @@ export function CustomDropdown({
         onClick={() => setIsOpen(!isOpen)}
         className="w-full flex items-center justify-between px-3 py-2 rounded-lg text-sm border transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
         style={{
-          backgroundColor: 'var(--card-bg)',
+          backgroundColor: isMobile ? '#111827' : 'var(--card-bg)',
           color: 'var(--foreground)',
-          borderColor: 'var(--border)'
+          borderColor: isMobile ? '#1f2937' : 'var(--border)'
         }}
       >
         <div className="flex items-center gap-2">
@@ -75,8 +77,8 @@ export function CustomDropdown({
         <div 
           className="absolute z-50 w-full mt-1 rounded-lg border shadow-lg animate-in slide-in-from-top-2"
           style={{
-            backgroundColor: 'var(--card-bg)',
-            borderColor: 'var(--border)',
+            backgroundColor: isMobile ? '#111827' : 'var(--card-bg)',
+            borderColor: isMobile ? '#1f2937' : 'var(--border)',
             boxShadow: 'var(--shadow-lg)'
           }}
         >
@@ -86,8 +88,10 @@ export function CustomDropdown({
                 key={option.value}
                 type="button"
                 onClick={() => handleOptionClick(option.value)}
-                className={`w-full text-left px-3 py-2 text-sm transition-colors duration-200 hover:bg-gray-100 dark:hover:bg-gray-700 ${
-                  option.value === value ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400' : ''
+                className={`w-full text-left px-3 py-2 text-sm transition-colors duration-200 ${
+                  isMobile 
+                    ? `hover:bg-gray-600 ${option.value === value ? 'bg-blue-600/30 text-blue-300' : ''}`
+                    : `hover:bg-gray-100 dark:hover:bg-gray-700 ${option.value === value ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400' : ''}`
                 }`}
                 style={{
                   color: option.value === value ? 'var(--primary)' : 'var(--foreground)'

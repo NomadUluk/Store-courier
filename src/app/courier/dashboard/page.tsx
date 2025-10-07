@@ -1169,6 +1169,23 @@ export default function CourierDashboard() {
               <p className="text-xs mb-2 text-gray-400">
                 {t('manageOrders')}
               </p>
+              {/* Индикатор текущей вкладки */}
+              <div className="flex items-center gap-2 mt-2">
+                <div className={`w-2 h-2 rounded-full ${
+                  activeTab === 'available' ? 'bg-yellow-400' :
+                  activeTab === 'my' ? 'bg-blue-400' :
+                  activeTab === 'completed' ? 'bg-green-400' :
+                  activeTab === 'canceled' ? 'bg-red-400' :
+                  'bg-purple-400'
+                }`}></div>
+                <span className="text-sm font-medium text-white">
+                  {activeTab === 'available' ? t('available') :
+                   activeTab === 'my' ? t('inWork') :
+                   activeTab === 'completed' ? t('delivered') :
+                   activeTab === 'canceled' ? t('canceled') :
+                   t('statistics') || 'Статистика'}
+                </span>
+              </div>
             </div>
 
             {/* Поиск для мобильной версии */}
@@ -1254,25 +1271,96 @@ export default function CourierDashboard() {
                 borderColor: 'var(--border)'
               }}>
                 <div className="space-y-3">
-                  {/* Первая строка - названия */}
-                  <div className="grid grid-cols-4 gap-4">
-                    <div className="flex items-center gap-2 text-sm font-medium text-gray-300">
-                      <FunnelIcon className="w-4 h-4" />
-                      Фильтры
+                  {/* Мобильная версия - вертикальная компоновка */}
+                  <div className="block sm:hidden space-y-3">
+                    {/* Фильтры */}
+                    <div>
+                      <div className="flex items-center gap-2 text-sm font-medium text-gray-300 mb-2">
+                        <FunnelIcon className="w-4 h-4" />
+                        Фильтры
+                      </div>
+                      <CustomDropdown
+                        options={dateFilterOptions}
+                        value={dateFilter}
+                        onChange={(value) => handleDateFilterChange(value as DateFilterType)}
+                        icon={CalendarIcon}
+                        className="w-full h-8"
+                        isMobile={true}
+                      />
                     </div>
-                    <div className="flex items-center gap-2 text-sm font-medium text-gray-300">
-                      <CalendarIcon className="w-4 h-4" />
-                      {t('period')}
+                    
+                    {/* Период */}
+                    <div>
+                      <div className="flex items-center gap-2 text-sm font-medium text-gray-300 mb-2">
+                        <CalendarIcon className="w-4 h-4" />
+                        {t('period')}
+                      </div>
+                      <div className="flex gap-1 h-8">
+                        <input
+                          type="date"
+                          value={customDateRange.start}
+                          onChange={(e) => setCustomDateRange(prev => ({ ...prev, start: e.target.value }))}
+                          className="flex-1 px-2 py-1 text-xs border rounded"
+                          style={{ backgroundColor: '#111827', borderColor: '#1f2937', color: 'var(--foreground)' }}
+                        />
+                        <input
+                          type="date"
+                          value={customDateRange.end}
+                          onChange={(e) => setCustomDateRange(prev => ({ ...prev, end: e.target.value }))}
+                          className="flex-1 px-2 py-1 text-xs border rounded"
+                          style={{ backgroundColor: '#111827', borderColor: '#1f2937', color: 'var(--foreground)' }}
+                        />
+                      </div>
                     </div>
-                    <div className="flex items-center gap-2 text-sm font-medium text-gray-300">
-                      <CurrencyDollarIcon className="w-4 h-4" />
-                      {t('orderPrice')}
+                    
+                    {/* Цена заказа */}
+                    <div>
+                      <div className="flex items-center gap-2 text-sm font-medium text-gray-300 mb-2">
+                        <CurrencyDollarIcon className="w-4 h-4" />
+                        {t('orderPrice')}
+                      </div>
+                      <div className="flex gap-1 h-8">
+                        <input
+                          type="number"
+                          placeholder="От"
+                          value={priceMin || ''}
+                          onChange={(e) => setPriceMin(e.target.value)}
+                          className="w-36.5 px-2 py-1 text-xs border rounded"
+                          style={{ backgroundColor: '#111827', borderColor: '#1f2937', color: 'var(--foreground)' }}
+                        />
+                        <input
+                          type="number"
+                          placeholder="До"
+                          value={priceMax || ''}
+                          onChange={(e) => setPriceMax(e.target.value)}
+                          className="w-36.5 px-2 py-1 text-xs border rounded"
+                          style={{ backgroundColor: '#111827', borderColor: '#1f2937', color: 'var(--foreground)' }}
+                        />
+                      </div>
                     </div>
-                    <div></div>
                   </div>
                   
-                  {/* Вторая строка - элементы управления */}
-                  <div className="grid grid-cols-4 gap-4 items-start">
+                  {/* Десктопная версия - горизонтальная компоновка */}
+                  <div className="hidden sm:block space-y-3">
+                    {/* Первая строка - названия */}
+                    <div className="grid grid-cols-4 gap-4">
+                      <div className="flex items-center gap-2 text-sm font-medium text-gray-300">
+                        <FunnelIcon className="w-4 h-4" />
+                        Фильтры
+                      </div>
+                      <div className="flex items-center gap-2 text-sm font-medium text-gray-300">
+                        <CalendarIcon className="w-4 h-4" />
+                        {t('period')}
+                      </div>
+                      <div className="flex items-center gap-2 text-sm font-medium text-gray-300">
+                        <CurrencyDollarIcon className="w-4 h-4" />
+                        {t('orderPrice')}
+                      </div>
+                      <div></div>
+                    </div>
+                    
+                    {/* Вторая строка - элементы управления */}
+                    <div className="grid grid-cols-4 gap-4 items-start">
                     {/* Готовые фильтры */}
                     <div className="h-8">
                       <CustomDropdown
@@ -1362,6 +1450,7 @@ export default function CourierDashboard() {
                         <span className="sm:hidden">Сброс</span>
                       </button>
                     </div>
+                  </div>
                   </div>
                 </div>
                 
@@ -1481,52 +1570,151 @@ export default function CourierDashboard() {
                   </div>
 
                   {/* KPI Карточки */}
-                    <div className="grid grid-cols-5 gap-4">
-                      {/* Доставлено */}
-                    <div className="bg-gray-800 rounded-xl p-4 border border-gray-700">
-                      <div className="flex items-center justify-between mb-2">
-                        <CheckCircleIcon className="w-6 h-6 text-green-400" />
-                        <span className="text-xs text-gray-400">Доставлено</span>
+                    <div className="space-y-3 sm:space-y-4">
+                      {/* Мобильная версия - 3+2 карточки */}
+                      <div className="block sm:hidden space-y-3">
+                        {/* Верхний ряд - 3 карточки */}
+                        <div className="grid grid-cols-3 gap-3">
+                          {/* Доставлено */}
+                          <div className="bg-green-500/10 rounded-xl p-3 border border-green-500/20">
+                            <div className="flex flex-col h-full">
+                              <div className="flex items-start justify-between mb-2">
+                                <CheckCircleIcon className="w-6 h-6 text-green-400/60" />
+                                <div className="text-lg font-bold text-white">{statistics.summary.completedOrders}</div>
+                              </div>
+                              <div className="text-right mt-auto">
+                                <div className="text-xs text-gray-400">Доставлено</div>
+                              </div>
+                            </div>
+                          </div>
+                          
+                          {/* В пути */}
+                          <div className="bg-blue-500/10 rounded-xl p-3 border border-blue-500/20">
+                            <div className="flex flex-col h-full">
+                              <div className="flex items-start justify-between mb-2">
+                                <TruckIcon className="w-6 h-6 text-blue-400/60" />
+                                <div className="text-lg font-bold text-white">{statistics.summary.inProgressOrders}</div>
+                              </div>
+                              <div className="text-right mt-auto">
+                                <div className="text-xs text-gray-400">В пути</div>
+                              </div>
+                            </div>
+                          </div>
+                          
+                          {/* Отменено */}
+                          <div className="bg-red-500/10 rounded-xl p-3 border border-red-500/20">
+                            <div className="flex flex-col h-full">
+                              <div className="flex items-start justify-between mb-2">
+                                <XCircleIcon className="w-6 h-6 text-red-400/60" />
+                                <div className="text-lg font-bold text-white">{statistics.summary.canceledOrders}</div>
+                              </div>
+                              <div className="text-right mt-auto">
+                                <div className="text-xs text-gray-400">Отменено</div>
+                              </div>
+                            </div>
+                          </div>
                         </div>
-                      <div className="text-2xl font-bold text-white">{statistics.summary.completedOrders}</div>
+                        
+                        {/* Нижний ряд - 2 карточки на всю ширину */}
+                        <div className="grid grid-cols-2 gap-3">
+                          {/* Заработано */}
+                          <div className="bg-orange-500/10 rounded-xl p-3 border border-orange-500/20">
+                            <div className="flex flex-col h-full">
+                              <div className="flex items-start justify-between mb-2">
+                                <CurrencyDollarIcon className="w-6 h-6 text-orange-400/60" />
+                                <div className="text-sm font-bold text-white">{statistics.summary.totalRevenue.toLocaleString()} сом</div>
+                              </div>
+                              <div className="text-right mt-auto">
+                                <div className="text-xs text-gray-400">Заработано</div>
+                              </div>
+                            </div>
+                          </div>
+                          
+                          {/* Всего заказов */}
+                          <div className="bg-purple-500/10 rounded-xl p-3 border border-purple-500/20">
+                            <div className="flex flex-col h-full">
+                              <div className="flex items-start justify-between mb-2">
+                                <ShoppingBagIcon className="w-6 h-6 text-purple-400/60" />
+                                <div className="text-lg font-bold text-white">{statistics.summary.totalOrders}</div>
+                              </div>
+                              <div className="text-right mt-auto">
+                                <div className="text-xs text-gray-400">Всего заказов</div>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
                       </div>
                       
-                      {/* В пути */}
-                    <div className="bg-gray-800 rounded-xl p-4 border border-gray-700">
-                      <div className="flex items-center justify-between mb-2">
-                        <TruckIcon className="w-6 h-6 text-blue-400" />
-                        <span className="text-xs text-gray-400">В пути</span>
+                      {/* Десктопная версия - 5 карточек в ряд */}
+                      <div className="hidden sm:block">
+                        <div className="grid grid-cols-5 gap-4">
+                          {/* Доставлено */}
+                          <div className="bg-green-500/10 rounded-xl p-4 border border-green-500/20">
+                            <div className="flex flex-col h-full">
+                              <div className="flex items-start justify-between mb-2">
+                                <CheckCircleIcon className="w-6 h-6 text-green-400/60" />
+                                <div className="text-2xl font-bold text-white">{statistics.summary.completedOrders}</div>
+                              </div>
+                              <div className="text-right mt-auto">
+                                <div className="text-xs text-gray-400">Доставлено</div>
+                              </div>
+                            </div>
+                          </div>
+                          
+                          {/* В пути */}
+                          <div className="bg-blue-500/10 rounded-xl p-4 border border-blue-500/20">
+                            <div className="flex flex-col h-full">
+                              <div className="flex items-start justify-between mb-2">
+                                <TruckIcon className="w-6 h-6 text-blue-400/60" />
+                                <div className="text-2xl font-bold text-white">{statistics.summary.inProgressOrders}</div>
+                              </div>
+                              <div className="text-right mt-auto">
+                                <div className="text-xs text-gray-400">В пути</div>
+                              </div>
+                            </div>
+                          </div>
+                          
+                          {/* Отменено */}
+                          <div className="bg-red-500/10 rounded-xl p-4 border border-red-500/20">
+                            <div className="flex flex-col h-full">
+                              <div className="flex items-start justify-between mb-2">
+                                <XCircleIcon className="w-6 h-6 text-red-400/60" />
+                                <div className="text-2xl font-bold text-white">{statistics.summary.canceledOrders}</div>
+                              </div>
+                              <div className="text-right mt-auto">
+                                <div className="text-xs text-gray-400">Отменено</div>
+                              </div>
+                            </div>
+                          </div>
+                          
+                          {/* Заработано */}
+                          <div className="bg-orange-500/10 rounded-xl p-4 border border-orange-500/20">
+                            <div className="flex flex-col h-full">
+                              <div className="flex items-start justify-between mb-2">
+                                <CurrencyDollarIcon className="w-6 h-6 text-orange-400/60" />
+                                <div className="text-lg font-bold text-white">{statistics.summary.totalRevenue.toLocaleString()} сом</div>
+                              </div>
+                              <div className="text-right mt-auto">
+                                <div className="text-xs text-gray-400">Заработано</div>
+                              </div>
+                            </div>
+                          </div>
+                          
+                          {/* Всего заказов */}
+                          <div className="bg-purple-500/10 rounded-xl p-4 border border-purple-500/20">
+                            <div className="flex flex-col h-full">
+                              <div className="flex items-start justify-between mb-2">
+                                <ShoppingBagIcon className="w-6 h-6 text-purple-400/60" />
+                                <div className="text-2xl font-bold text-white">{statistics.summary.totalOrders}</div>
+                              </div>
+                              <div className="text-right mt-auto">
+                                <div className="text-xs text-gray-400">Всего заказов</div>
+                              </div>
+                            </div>
+                          </div>
                         </div>
-                      <div className="text-2xl font-bold text-white">{statistics.summary.inProgressOrders}</div>
                       </div>
-                      
-                      {/* Отменено */}
-                    <div className="bg-gray-800 rounded-xl p-4 border border-gray-700">
-                      <div className="flex items-center justify-between mb-2">
-                        <XCircleIcon className="w-6 h-6 text-red-400" />
-                        <span className="text-xs text-gray-400">Отменено</span>
-                        </div>
-                      <div className="text-2xl font-bold text-white">{statistics.summary.canceledOrders}</div>
-                      </div>
-                      
-                      {/* Заработано */}
-                    <div className="bg-gray-800 rounded-xl p-4 border border-gray-700">
-                      <div className="flex items-center justify-between mb-2">
-                        <CurrencyDollarIcon className="w-6 h-6 text-orange-400" />
-                        <span className="text-xs text-gray-400">Заработано</span>
-                        </div>
-                      <div className="text-lg font-bold text-white">{statistics.summary.totalRevenue.toLocaleString()} сом</div>
-                      </div>
-                      
-                      {/* Всего заказов */}
-                    <div className="bg-gray-800 rounded-xl p-4 border border-gray-700">
-                      <div className="flex items-center justify-between mb-2">
-                        <ShoppingBagIcon className="w-6 h-6 text-purple-400" />
-                        <span className="text-xs text-gray-400">Всего заказов</span>
-                        </div>
-                      <div className="text-2xl font-bold text-white">{statistics.summary.totalOrders}</div>
                     </div>
-                  </div>
 
 
 
@@ -1566,18 +1754,18 @@ export default function CourierDashboard() {
 
       {/* Мобильное меню внизу */}
       <div className="lg:hidden fixed bottom-0 left-0 right-0 z-40 border-t" style={{ borderColor: 'var(--border)', backgroundColor: 'var(--navbar-bg)' }}>
-        <div className="flex items-center justify-around py-2">
+        <div className="flex items-center justify-around py-3">
           {[
-            { key: 'available', label: t('available'), icon: ClockIcon, count: availableOrders.length },
-            { key: 'my', label: t('inWork'), icon: BoltIcon, count: myOrders.length },
-            { key: 'completed', label: t('delivered'), icon: CheckCircleIcon, count: completedOrders.length },
-            { key: 'canceled', label: t('canceled'), icon: XCircleIcon, count: canceledOrders.length },
-            { key: 'statistics', label: t('statistics') || 'Статистика', icon: ChartBarIcon, count: null }
-          ].map(({ key, label, icon: Icon, count }) => (
+            { key: 'available', icon: ClockIcon, count: availableOrders.length },
+            { key: 'my', icon: BoltIcon, count: myOrders.length },
+            { key: 'completed', icon: CheckCircleIcon, count: completedOrders.length },
+            { key: 'canceled', icon: XCircleIcon, count: canceledOrders.length },
+            { key: 'statistics', icon: ChartBarIcon, count: null }
+          ].map(({ key, icon: Icon, count }) => (
             <button
               key={key}
               onClick={() => setActiveTab(key as TabType)}
-              className={`flex flex-col items-center py-2 px-3 rounded-lg transition-all duration-200 ${
+              className={`flex items-center justify-center py-2 px-4 rounded-lg transition-all duration-200 ${
                 activeTab === key
                   ? 'text-white'
                   : 'text-gray-400'
@@ -1587,7 +1775,7 @@ export default function CourierDashboard() {
               }}
             >
               <div className="relative">
-                <Icon className={`w-5 h-5 ${
+                <Icon className={`w-6 h-6 ${
                   activeTab === key
                     ? 'text-white'
                     : key === 'available' ? 'text-yellow-400' :
@@ -1602,7 +1790,6 @@ export default function CourierDashboard() {
                   </span>
                 )}
               </div>
-              <span className="text-xs mt-1 truncate max-w-16">{label}</span>
             </button>
           ))}
         </div>
