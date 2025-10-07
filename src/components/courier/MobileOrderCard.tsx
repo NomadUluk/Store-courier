@@ -7,9 +7,11 @@ interface MobileOrderCardProps {
   order: OrderWithDetails
   onClick: () => void
   isGlowing?: boolean
+  searchQuery?: string
+  highlightText?: (text: string, query: string) => React.ReactNode
 }
 
-export function MobileOrderCard({ order, onClick, isGlowing = false }: MobileOrderCardProps) {
+export function MobileOrderCard({ order, onClick, isGlowing = false, searchQuery = '', highlightText }: MobileOrderCardProps) {
   const { t } = useLanguage()
   
   const getStatusBadge = (status: OrderStatus) => {
@@ -55,7 +57,7 @@ export function MobileOrderCard({ order, onClick, isGlowing = false }: MobileOrd
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-2">
             <span className="text-base font-semibold tracking-tight text-white">
-              #{order.id.slice(-8)}
+              #{highlightText ? highlightText(order.id.slice(-8), searchQuery) : order.id.slice(-8)}
             </span>
             {getStatusBadge(order.status)}
           </div>
@@ -91,7 +93,7 @@ export function MobileOrderCard({ order, onClick, isGlowing = false }: MobileOrd
             <div className="flex items-center justify-between">
               <span className="text-xs text-gray-400">Клиент</span>
               <span className="text-xs text-white truncate max-w-[120px]">
-                {order.customerName}
+                {highlightText ? highlightText(order.customerName || '', searchQuery) : order.customerName}
               </span>
             </div>
           )}
@@ -101,7 +103,7 @@ export function MobileOrderCard({ order, onClick, isGlowing = false }: MobileOrd
             <div className="flex items-center justify-between">
               <span className="text-xs text-gray-400">Телефон</span>
               <span className="text-xs text-gray-400 select-none">
-                {order.customerPhone}
+                {highlightText ? highlightText(order.customerPhone || '', searchQuery) : order.customerPhone}
               </span>
             </div>
           )}
@@ -111,7 +113,7 @@ export function MobileOrderCard({ order, onClick, isGlowing = false }: MobileOrd
             <span className="text-xs text-gray-400">Адрес</span>
             <div className="text-right flex-1 ml-2">
               <span className="text-xs text-white leading-tight line-clamp-2 text-right select-none w-full">
-                {order.deliveryAddress}
+                {highlightText ? highlightText(order.deliveryAddress || '', searchQuery) : order.deliveryAddress}
               </span>
             </div>
           </div>

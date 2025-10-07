@@ -1,5 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
 
+// Безопасный импорт инициализации сервера для автоматического запуска бота
+if (typeof window === 'undefined') {
+  import('@/lib/server-init').catch(console.error)
+}
+
 export function middleware(request: NextRequest) {
   console.log('Middleware: Проверка маршрута:', request.nextUrl.pathname)
   

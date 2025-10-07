@@ -2,6 +2,7 @@
 
 import { usePathname } from 'next/navigation'
 import { LanguageProvider, useLanguage } from '@/contexts/LanguageContext'
+import { OrdersProvider } from '@/contexts/OrdersContext'
 import { SimpleLanguageToggle } from '@/components/ui/SimpleLanguageToggle'
 import { TruckIcon, UserIcon, ArrowRightOnRectangleIcon } from '@heroicons/react/24/outline'
 import { useState, useRef, useEffect } from 'react'
@@ -94,7 +95,9 @@ function CourierLayoutContent({
 
             {/* Поиск посередине - показываем только на странице dashboard */}
             <div className="flex-1 flex justify-center max-w-xs sm:max-w-md lg:max-w-none">
-              <SearchBar />
+              <div className="w-full max-w-sm lg:max-w-none">
+                <SearchBar />
+              </div>
             </div>
             
             <div className="flex items-center space-x-1 sm:space-x-1.5 lg:space-x-3 flex-shrink-0">
@@ -150,8 +153,20 @@ function CourierLayoutContent({
               {/* Выход */}
               <button
                 onClick={async () => {
-                  await fetch('/api/courier/auth/logout', { method: 'POST' })
-                  window.location.href = '/courier/login'
+                  try {
+                    // Сначала очищаем токен на клиенте
+                    document.cookie = 'auth-token=; Path=/; Expires=Thu, 01 Jan 1970 00:00:01 GMT;'
+                    
+                    // Затем отправляем запрос на сервер
+                    await fetch('/api/courier/auth/logout', { method: 'POST' })
+                    
+                    // Перенаправляем на страницу логина
+                    window.location.href = '/courier/login'
+                  } catch (error) {
+                    console.error('Ошибка при выходе:', error)
+                    // В любом случае перенаправляем на логин
+                    window.location.href = '/courier/login'
+                  }
                 }}
                 className="flex items-center gap-1 sm:gap-1.5 lg:gap-2 rounded-lg sm:rounded-xl lg:rounded-2xl border-2 px-1.5 py-1.5 sm:px-2.5 sm:py-2 lg:px-5 lg:py-3 text-xs sm:text-sm font-semibold shadow-sm hover:shadow-lg transition-all duration-200 hover:-translate-y-1 hover:scale-105"
                 style={{
@@ -183,9 +198,11 @@ export default function CourierLayout({
   children: React.ReactNode
 }) {
   return (
-    <CourierLayoutWrapper>
-      {children}
-    </CourierLayoutWrapper>
+    <OrdersProvider>
+      <CourierLayoutWrapper>
+        {children}
+      </CourierLayoutWrapper>
+    </OrdersProvider>
   )
 }
 

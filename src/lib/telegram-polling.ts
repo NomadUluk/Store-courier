@@ -1,18 +1,30 @@
-import TelegramBot from 'node-telegram-bot-api'
 import { getTelegramBotToken } from '@/lib/settings'
 import { registerCourierInTelegram } from '@/lib/telegram'
 
-let botInstance: TelegramBot | null = null
+// Динамический импорт для совместимости с Turbopack
+let TelegramBot: any = null
+let botInstance: any = null
 let isPollingActive = false
-let restartAttempts = 0
-const MAX_RESTART_ATTEMPTS = 3
-let lastRestartTime = 0
-const RESTART_COOLDOWN = 30000 // 30 секунд между перезапусками
+
+// Функция для динамического импорта TelegramBot
+async function getTelegramBot() {
+  if (!TelegramBot) {
+    try {
+      const telegramModule = await import('node-telegram-bot-api')
+      TelegramBot = telegramModule.default
+    } catch (error) {
+      console.error('❌ Ошибка импорта node-telegram-bot-api:', error)
+      throw error
+    }
+  }
+  return TelegramBot
+}
 
 // Функция для проверки статуса бота
 async function checkBotStatus(token: string): Promise<boolean> {
   try {
-    const testBot = new TelegramBot(token, { 
+    const TelegramBotClass = await getTelegramBot()
+    const testBot = new TelegramBotClass(token, { 
       polling: false,
       request: {
         agentOptions: {
@@ -29,7 +41,8 @@ async function checkBotStatus(token: string): Promise<boolean> {
     
     const getMePromise = testBot.getMe()
     
-    await Promise.race([getMePromise, timeoutPromise])
+    const botInfo = await Promise.race([getMePromise, timeoutPromise])
+    console.log('✅ Бот доступен:', (botInfo as any)?.first_name || 'Unknown')
     return true
   } catch (error: any) {
     console.log('⚠️ Ошибка проверки статуса бота:', error.message)
@@ -43,6 +56,12 @@ async function checkBotStatus(token: string): Promise<boolean> {
       return true // Пропускаем проверку при проблемах с сетью
     }
     
+    // Если это конфликт 409, бот уже запущен где-то еще
+    if (error.message.includes('409') || error.message.includes('Conflict')) {
+      console.log('⚠️ Бот уже запущен в другом месте (конфликт 409)')
+      return false
+    }
+    
     return false
   }
 }
@@ -50,24 +69,10 @@ async function checkBotStatus(token: string): Promise<boolean> {
 // Функция для запуска бота в режиме polling
 export async function startTelegramPolling() {
   try {
-    // Проверяем защиту от бесконечного цикла
-    const now = Date.now()
-    if (now - lastRestartTime < RESTART_COOLDOWN) {
-      console.log('⏳ Слишком частые перезапуски, пропускаем...')
-      return
-    }
-
-    if (restartAttempts >= MAX_RESTART_ATTEMPTS) {
-      console.log('🛑 Превышено максимальное количество попыток перезапуска')
-      return
-    }
-
-    // Сначала останавливаем предыдущий экземпляр если он есть
+    // Проверяем, не запущен ли уже бот
     if (botInstance || isPollingActive) {
-      console.log('🛑 Остановка предыдущего экземпляра бота...')
-      await stopTelegramPolling()
-      // Даём время для полной остановки
-      await new Promise(resolve => setTimeout(resolve, 2000))
+      console.log('⚠️ Бот уже запущен, пропускаем повторный запуск')
+      return
     }
 
     const token = await getTelegramBotToken()
@@ -76,13 +81,11 @@ export async function startTelegramPolling() {
       return
     }
 
-    // Проверяем статус бота перед запуском (с улучшенной обработкой ошибок)
+    // Проверяем статус бота перед запуском
     console.log('🔍 Проверка статуса бота...')
     const isBotAvailable = await checkBotStatus(token)
     if (!isBotAvailable) {
-      console.log('❌ Бот недоступен, возможно уже запущен в другом месте')
-      restartAttempts++
-      lastRestartTime = now
+      console.log('❌ Бот недоступен или уже запущен в другом месте')
       return
     }
 
@@ -92,7 +95,8 @@ export async function startTelegramPolling() {
     console.log('🚀 Запуск Telegram бота в режиме polling...')
 
     // Создаём новый экземпляр с улучшенными настройками сети
-    botInstance = new TelegramBot(token, { 
+    const TelegramBotClass = await getTelegramBot()
+    botInstance = new TelegramBotClass(token, { 
       polling: {
         interval: 3000, // Увеличиваем интервал для снижения нагрузки
         params: {
@@ -272,26 +276,16 @@ export async function startTelegramPolling() {
         return
       }
       
-      // Если это конфликт 409, перезапускаем с защитой
+      // Если это конфликт 409 - НЕ перезапускаем, а логируем
       if (error.message.includes('409') || error.message.includes('Conflict')) {
-        console.log('🔄 Обнаружен конфликт 409, перезапуск бота...')
-        
-        // Проверяем защиту от бесконечного цикла
-        const now = Date.now()
-        if (now - lastRestartTime < RESTART_COOLDOWN || restartAttempts >= MAX_RESTART_ATTEMPTS) {
-          console.log('⏳ Слишком частые перезапуски или превышен лимит, пропускаем...')
-          return
-        }
-        
-        restartAttempts++
-        lastRestartTime = now
-        
-        setTimeout(async () => {
-          await stopTelegramPolling()
-          await new Promise(resolve => setTimeout(resolve, 5000)) // Увеличиваем задержку
-          await startTelegramPolling()
-        }, 2000)
+        console.log('⚠️ Конфликт 409: Бот уже запущен в другом месте')
+        console.log('💡 Рекомендация: Проверьте, не запущен ли бот в другом процессе')
+        console.log('🛑 Автоматический перезапуск отключен для предотвращения бесконечных циклов')
+        return
       }
+      
+      // Для других ошибок просто логируем
+      console.log('📝 Ошибка polling зафиксирована, бот продолжает работу')
     })
 
     botInstance.on('error', (error) => {
@@ -299,7 +293,6 @@ export async function startTelegramPolling() {
     })
 
     isPollingActive = true
-    restartAttempts = 0 // Сбрасываем счетчик при успешном запуске
     console.log('✅ Telegram бот запущен в режиме polling')
 
   } catch (error) {
@@ -359,9 +352,3 @@ export function isTelegramPollingActive(): boolean {
   return isPollingActive
 }
 
-// Функция для сброса счетчиков перезапуска
-export function resetRestartCounters() {
-  restartAttempts = 0
-  lastRestartTime = 0
-  console.log('🔄 Счетчики перезапуска сброшены')
-}

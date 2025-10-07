@@ -33,6 +33,39 @@ export function formatPhoneNumber(phone: string): string {
   return phone
 }
 
+// Функция для нормализации номера телефона для поиска
+export function normalizePhoneForSearch(phone: string): string {
+  if (!phone) return ''
+  // Убираем все символы кроме цифр
+  return phone.replace(/\D/g, '')
+}
+
+// Функция для генерации вариантов номера телефона для поиска
+export function generatePhoneSearchVariants(phone: string): string[] {
+  if (!phone) return []
+  
+  const normalized = normalizePhoneForSearch(phone)
+  const variants = [normalized]
+  
+  // Если номер длинный, добавляем варианты
+  if (normalized.length >= 9) {
+    // Последние 9 цифр
+    variants.push(normalized.slice(-9))
+    
+    // С кодом страны 996
+    if (!normalized.startsWith('996')) {
+      variants.push(`996${normalized.slice(-9)}`)
+    }
+    
+    // С кодом страны +996
+    if (!normalized.startsWith('996')) {
+      variants.push(`+996${normalized.slice(-9)}`)
+    }
+  }
+  
+  return [...new Set(variants)] // Убираем дубликаты
+}
+
 export function getOrderStatusText(status: string): string {
   const statusMap: Record<string, string> = {
     CREATED: 'Создан',

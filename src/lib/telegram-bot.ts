@@ -1,11 +1,21 @@
-import TelegramBot from 'node-telegram-bot-api'
 import { getTelegramBotToken } from '@/lib/settings'
 
 // Кэш для бота, чтобы не создавать новый экземпляр каждый раз
-let botInstance: TelegramBot | null = null
+let botInstance: any = null
+
+// Функция для динамического импорта TelegramBot
+async function getTelegramBot() {
+  try {
+    const telegramModule = await import('node-telegram-bot-api')
+    return telegramModule.default
+  } catch (error) {
+    console.error('❌ Ошибка импорта node-telegram-bot-api:', error)
+    throw error
+  }
+}
 
 // Функция для получения экземпляра бота
-export async function getBot(): Promise<TelegramBot | null> {
+export async function getBot(): Promise<any | null> {
   try {
     if (botInstance) {
       return botInstance
@@ -17,7 +27,8 @@ export async function getBot(): Promise<TelegramBot | null> {
       return null
     }
 
-    botInstance = new TelegramBot(token, { 
+    const TelegramBotClass = await getTelegramBot()
+    botInstance = new TelegramBotClass(token, { 
       polling: false,
       request: {
         timeout: 5000 // 5 секунд таймаут

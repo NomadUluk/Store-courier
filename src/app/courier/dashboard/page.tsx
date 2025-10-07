@@ -6,9 +6,11 @@ import { CompactOrderCard } from '@/components/courier/CompactOrderCard'
 import { MobileOrderCard } from '@/components/courier/MobileOrderCard'
 import { OrderDetailModal } from '@/components/courier/OrderDetailModal'
 import { useLanguage } from '@/contexts/LanguageContext'
+import { useOrders } from '@/contexts/OrdersContext'
 import { CustomDropdown } from '@/components/ui/CustomDropdown'
 import { ClockIcon, BoltIcon, CheckCircleIcon, XCircleIcon, MagnifyingGlassIcon, FunnelIcon, ArrowsUpDownIcon, CalendarIcon, CurrencyDollarIcon, ShoppingBagIcon, ChartBarIcon, TruckIcon, ExclamationTriangleIcon } from '@heroicons/react/24/outline'
 import type { OrderWithDetails, OrderStatus, OrderItem, Product, Category, User } from '@/types'
+import { normalizePhoneForSearch, generatePhoneSearchVariants } from '@/lib/utils'
 
 type TabType = 'available' | 'my' | 'completed' | 'canceled' | 'statistics'
 type SortType = 'date-new' | 'date-old' | 'price-high' | 'price-low' | 'items-high' | 'items-low'
@@ -174,7 +176,7 @@ export default function CourierDashboard() {
       window.removeEventListener('unhandledrejection', handleUnhandledRejection)
     }
   }, [])
-  const [orders, setOrders] = useState<OrderWithDetails[]>([])
+  const { orders, setOrders } = useOrders()
   const [isLoading, setIsLoading] = useState(true)
   const [isUpdating, setIsUpdating] = useState(false)
   const [error, setError] = useState('')
@@ -182,6 +184,8 @@ export default function CourierDashboard() {
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [activeTab, setActiveTab] = useState<TabType>('available')
   const [currentCourierId, setCurrentCourierId] = useState<string | null>(null)
+  const [isServerOnline, setIsServerOnline] = useState(true)
+  const [networkErrorCount, setNetworkErrorCount] = useState(0)
   const [previousOrderIds, setPreviousOrderIds] = useState<Set<string>>(new Set())
   const [previousAvailableCount, setPreviousAvailableCount] = useState<number>(0)
   const [isInitialized, setIsInitialized] = useState<boolean>(false)
@@ -363,12 +367,30 @@ export default function CourierDashboard() {
     }
   }, [dateFilter, priceMin, priceMax])
 
+  // Функция для подсветки найденного текста
+  const highlightSearchText = (text: string, query: string) => {
+    if (!query.trim() || !text) return text
+
+    const regex = new RegExp(`(${query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi')
+    const parts = text.split(regex)
+
+    return parts.map((part, index) =>
+      regex.test(part) ? (
+        <mark key={index} className="bg-yellow-200 text-yellow-900 px-1 rounded font-medium">
+          {part}
+        </mark>
+      ) : part
+    )
+  }
+
   // Функция для рендеринга карточек заказов
   const renderOrderCard = (order: OrderWithDetails) => {
     const commonProps = {
       order,
       onClick: () => handleOrderClick(order),
-      isGlowing: glowingOrders.has(order.id)
+      isGlowing: glowingOrders.has(order.id),
+      searchQuery: searchQuery,
+      highlightText: highlightSearchText
     }
 
     if (isMobile) {
@@ -390,6 +412,7 @@ export default function CourierDashboard() {
       window.removeEventListener('searchQueryChange', handleSearchChange as EventListener)
     }
   }, [])
+
 
   // Слушаем события навигации к статистике из ProfileDropdown
   useEffect(() => {
@@ -476,15 +499,26 @@ export default function CourierDashboard() {
     if (showLoading) setIsLoading(true)
     
     try {
-      // Добавляем обработку ошибок расширений браузера
+      // Проверяем доступность сервера перед запросом
       if (typeof window !== 'undefined') {
-        window.addEventListener('error', (event) => {
-          if (event.message.includes('message channel closed')) {
-            console.log('🔧 Игнорируем ошибку расширения браузера')
-            event.preventDefault()
-            return false
+        try {
+          // Простая проверка доступности сервера
+          const healthCheck = await fetch('/api/courier/auth/verify', {
+            method: 'GET',
+            signal: AbortSignal.timeout(5000) // 5 секунд для проверки
+          })
+          
+          if (!healthCheck.ok && healthCheck.status !== 401) {
+            throw new Error('Сервер недоступен')
           }
-        })
+        } catch (healthError) {
+          console.log('🌐 Сервер недоступен, пропускаем запрос заказов')
+          setIsServerOnline(false)
+          if (showLoading) {
+            setError('Сервер недоступен. Проверьте подключение к интернету.')
+          }
+          return
+        }
       }
       
       const response = await fetch('/api/courier/orders', {
@@ -493,14 +527,20 @@ export default function CourierDashboard() {
           'Content-Type': 'application/json',
         },
         // Добавляем таймаут для запроса
-        signal: AbortSignal.timeout(20000) // 20 секунд таймаут
+        signal: AbortSignal.timeout(15000) // 15 секунд таймаут
       })
       
       if (!response.ok) {
         if (response.status === 401) {
-          setError('Ошибка авторизации. Пожалуйста, войдите снова.')
-          // Перенаправляем на страницу входа
-          router.push('/courier/login')
+          // Проверяем, не происходит ли выход из системы
+          const isLoggingOut = !document.cookie.includes('auth-token=') || 
+                             document.cookie.includes('auth-token=;')
+          
+          if (!isLoggingOut) {
+            setError('Ошибка авторизации. Пожалуйста, войдите снова.')
+            // Перенаправляем на страницу входа
+            router.push('/courier/login')
+          }
           return
         }
         throw new Error(`HTTP ${response.status}: ${response.statusText}`)
@@ -513,6 +553,8 @@ export default function CourierDashboard() {
         
         setOrders(newOrders)
         setError('')
+        setIsServerOnline(true) // Сервер работает
+        setNetworkErrorCount(0) // Сбрасываем счетчик ошибок
         
         // Инициализируем счетчик доступных заказов при первой загрузке
         if (showLoading) {
@@ -641,7 +683,17 @@ export default function CourierDashboard() {
       
       // Не показываем ошибку при автоматическом обновлении, только при первой загрузке
       if (showLoading) {
-        setError('Ошибка подключения к серверу. Убедитесь, что сервер запущен на порту 3000.')
+        if (error instanceof Error && error.name === 'TypeError' && error.message.includes('Failed to fetch')) {
+          setError('Сервер недоступен. Проверьте подключение к интернету.')
+          setIsServerOnline(false)
+          setNetworkErrorCount(prev => prev + 1)
+        } else {
+          setError('Ошибка загрузки заказов. Попробуйте обновить страницу.')
+        }
+      } else {
+        // При автоматическом обновлении просто инкрементируем счетчик ошибок
+        setNetworkErrorCount(prev => prev + 1)
+        setIsServerOnline(false)
       }
     } finally {
       if (showLoading) setIsLoading(false)
@@ -663,10 +715,10 @@ export default function CourierDashboard() {
 
       if (data.success) {
         // Обновляем заказ в списке
-        setOrders(prevOrders => 
-          prevOrders.map(order => 
+        setOrders((prevOrders: OrderWithDetails[]): OrderWithDetails[] => 
+          prevOrders.map((order: OrderWithDetails): OrderWithDetails => 
             order.id === orderId 
-              ? { ...order, ...data.data }
+              ? { ...order, ...data.data } as OrderWithDetails
               : order
           )
         )
@@ -772,9 +824,16 @@ export default function CourierDashboard() {
         fetchOrdersAndCheckNew()
       } catch (error) {
         console.error('Ошибка проверки авторизации:', error)
-        // Очищаем токен и перенаправляем
-        document.cookie = 'auth-token=; Path=/; Expires=Thu, 01 Jan 1970 00:00:01 GMT;'
-        router.push('/courier/login')
+        // Проверяем, не происходит ли выход из системы
+        const isLoggingOut = window.location.href.includes('logout') || 
+                           document.cookie.includes('auth-token=;') ||
+                           !document.cookie.includes('auth-token=')
+        
+        if (!isLoggingOut) {
+          // Очищаем токен и перенаправляем только если это не процесс выхода
+          document.cookie = 'auth-token=; Path=/; Expires=Thu, 01 Jan 1970 00:00:01 GMT;'
+          router.push('/courier/login')
+        }
       }
     }
     
@@ -817,17 +876,20 @@ export default function CourierDashboard() {
     }
   }, [activeTab, fetchStatistics, dateFilter, customDateRange, priceMin, priceMax])
 
-  // Автоматическое обновление каждые 10 секунд
+  // Автоматическое обновление с адаптивным интервалом
   useEffect(() => {
-    const interval = setInterval(() => {
-      if (isInitialized) {
-        // Объединенный запрос: получаем заказы и проверяем новые
+    // Увеличиваем интервал при ошибках сети
+    const interval = networkErrorCount > 3 ? 30000 : 10000 // 30 секунд при ошибках, иначе 10
+    
+    const timer = setInterval(() => {
+      if (isInitialized && (networkErrorCount < 5 || isServerOnline)) {
+        // Не делаем запросы если слишком много ошибок и сервер offline
         fetchOrdersAndCheckNew(false) // Обновляем без показа loading
       }
-    }, 10000) // 10 секунд
+    }, interval)
 
-    return () => clearInterval(interval)
-  }, [fetchOrdersAndCheckNew, isInitialized])
+    return () => clearInterval(timer)
+  }, [fetchOrdersAndCheckNew, isInitialized, networkErrorCount, isServerOnline])
 
   // Очистка notifiedOrderIds для заказов, которые больше не в статусе COURIER_WAIT
   useEffect(() => {
@@ -858,6 +920,7 @@ export default function CourierDashboard() {
     // Применяем поиск
     if (searchQuery.trim()) {
       const query = searchQuery.toLowerCase().trim()
+      const normalizedQuery = normalizePhoneForSearch(query)
       
       filtered = filtered.filter(order => {
         // Поиск по ID заказа
@@ -872,8 +935,25 @@ export default function CourierDashboard() {
         // Поиск по имени клиента
         if (order.customerName?.toLowerCase().includes(query)) return true
         
-        // Поиск по телефону клиента
-        if (order.customerPhone?.toLowerCase().includes(query)) return true
+        // Улучшенный поиск по телефону клиента
+        if (order.customerPhone) {
+          const customerPhone = order.customerPhone.toLowerCase()
+          
+          // Обычный поиск по строке
+          if (customerPhone.includes(query)) return true
+          
+          // Поиск по нормализованному номеру (только цифры)
+          if (normalizedQuery.length >= 3) {
+            const customerPhoneVariants = generatePhoneSearchVariants(order.customerPhone)
+            
+            // Ищем совпадения в любом из вариантов номера клиента
+            const hasMatch = customerPhoneVariants.some(variant => 
+              variant.includes(normalizedQuery) || normalizedQuery.includes(variant)
+            )
+            
+            if (hasMatch) return true
+          }
+        }
         
         // Поиск по товарам в заказе
         if (order.orderItems && order.orderItems.length > 0) {
@@ -1188,34 +1268,6 @@ export default function CourierDashboard() {
               </div>
             </div>
 
-            {/* Поиск для мобильной версии */}
-            <div className="relative">
-              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                <MagnifyingGlassIcon className="h-4 w-4 text-gray-400" />
-              </div>
-              <input
-                type="text"
-                placeholder={t('searchOrders') || 'Поиск...'}
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-9 pr-9 py-2 rounded-lg text-sm transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                style={{
-                  backgroundColor: 'var(--card-bg)',
-                  color: 'var(--foreground)',
-                  border: '1px solid var(--border)'
-                }}
-              />
-              {searchQuery && (
-                <button
-                  onClick={() => setSearchQuery('')}
-                  className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-200 transition-colors"
-                >
-                  <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                </button>
-              )}
-            </div>
 
         </div>
 

@@ -1,31 +1,25 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { startTelegramPolling, stopTelegramPolling, isTelegramPollingActive } from '@/lib/telegram-polling'
+import { isTelegramPollingActive } from '@/lib/telegram-polling'
 import type { ApiResponse } from '@/types'
-
-// Автоматический запуск бота при первом запросе
-let isAutoStarted = false
 
 export async function GET(request: NextRequest) {
   try {
-    if (!isAutoStarted) {
-      console.log('🚀 Автоматический запуск Telegram бота...')
-      await startTelegramPolling()
-      isAutoStarted = true
-    }
-
+    // Только проверяем статус, не запускаем бота
+    // Бот запускается автоматически при старте сервера через server-init.ts
+    
     return NextResponse.json<ApiResponse>({
       success: true,
       message: 'Telegram бот статус',
       data: {
         isActive: isTelegramPollingActive(),
-        isAutoStarted
+        autoStarted: false // Бот запускается через server-init, не через этот API
       }
     })
   } catch (error) {
     console.error('Auto-start error:', error)
     return NextResponse.json<ApiResponse>({
       success: false,
-      error: 'Ошибка при автозапуске бота'
+      error: 'Ошибка при проверке статуса бота'
     }, { status: 500 })
   }
 }
@@ -35,18 +29,20 @@ export async function POST(request: NextRequest) {
     const { action } = await request.json()
 
     if (action === 'start') {
+      // Импортируем динамически для избежания циклических зависимостей
+      const { startTelegramPolling } = await import('@/lib/telegram-polling')
       await startTelegramPolling()
-      isAutoStarted = true
       return NextResponse.json<ApiResponse>({
         success: true,
-        message: 'Telegram бот запущен'
+        message: 'Telegram бот запущен вручную'
       })
     } else if (action === 'stop') {
+      // Импортируем динамически для избежания циклических зависимостей
+      const { stopTelegramPolling } = await import('@/lib/telegram-polling')
       await stopTelegramPolling()
-      isAutoStarted = false
       return NextResponse.json<ApiResponse>({
         success: true,
-        message: 'Telegram бот остановлен'
+        message: 'Telegram бот остановлен вручную'
       })
     } else {
       return NextResponse.json<ApiResponse>({

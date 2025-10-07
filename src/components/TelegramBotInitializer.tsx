@@ -4,8 +4,8 @@ import { useEffect } from 'react'
 
 export default function TelegramBotInitializer() {
   useEffect(() => {
-    // Запускаем автоинициализацию бота при загрузке приложения
-    const initBot = async () => {
+    // Только проверяем статус бота, не запускаем его
+    const checkBotStatus = async () => {
       try {
         const response = await fetch('/api/telegram/auto-start', {
           method: 'GET'
@@ -16,16 +16,16 @@ export default function TelegramBotInitializer() {
           if (data.data?.isActive) {
             console.log('✅ Telegram бот активен')
           } else {
-            console.log('🔄 Запуск Telegram бота...')
+            console.log('ℹ️ Telegram бот не активен (запускается автоматически при старте сервера)')
           }
         }
       } catch (error) {
-        console.error('❌ Ошибка инициализации Telegram бота:', error)
+        console.error('❌ Ошибка проверки статуса Telegram бота:', error)
       }
     }
 
-    // Запускаем через небольшую задержку, чтобы приложение успело загрузиться
-    const timer = setTimeout(initBot, 2000)
+    // Проверяем статус через небольшую задержку
+    const timer = setTimeout(checkBotStatus, 2000)
 
     return () => clearTimeout(timer)
   }, [])
