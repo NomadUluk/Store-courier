@@ -34,7 +34,7 @@ setInterval(() => {
   for (const [orderId, timestamp] of notificationCache.entries()) {
     if (now - timestamp > NOTIFICATION_COOLDOWN * 2) { // Удаляем записи старше 10 минут
       notificationCache.delete(orderId)
-      console.log(`🧹 NotificationManager: Удален из кэша заказ: ${orderId.slice(-8)}`)
+      // console.log(`🧹 NotificationManager: Удален из кэша заказ: ${orderId.slice(-8)}`)
     }
   }
 }, 600000) // 10 минут
@@ -58,7 +58,7 @@ function checkCookieDeduplication(request: NextRequest, notificationKey: string)
     
     // Если cookie существует и не истек cooldown
     if (now - timestamp < NOTIFICATION_COOLDOWN) {
-      console.log(`🍪 NotificationManager: Дублирование обнаружено через cookie для ${notificationKey}`)
+      // console.log(`🍪 NotificationManager: Дублирование обнаружено через cookie для ${notificationKey}`)
       return true
     }
   }
@@ -79,7 +79,7 @@ function setNotificationCookie(response: NextResponse, notificationKey: string):
     sameSite: 'strict'
   })
   
-  console.log(`🍪 NotificationManager: Установлен cookie для ${notificationKey}`)
+  // console.log(`🍪 NotificationManager: Установлен cookie для ${notificationKey}`)
 }
 
 // Основная функция для отправки уведомлений
@@ -90,14 +90,14 @@ export async function sendNotification(
   const { orderId, type, oldStatus, cancelComment } = notificationRequest
   const notificationKey = generateNotificationKey(orderId, type, oldStatus)
   
-  console.log(`📨 NotificationManager: Обработка уведомления ${type} для заказа ${orderId.slice(-8)}`)
+  // console.log(`📨 NotificationManager: Обработка уведомления ${type} для заказа ${orderId.slice(-8)}`)
   
   // Проверяем дублирование через кэш в памяти
   const lastNotificationTime = notificationCache.get(notificationKey)
   if (lastNotificationTime) {
     const timeSinceLastNotification = Date.now() - lastNotificationTime
     if (timeSinceLastNotification < NOTIFICATION_COOLDOWN) {
-      console.log(`⏸️ NotificationManager: Уведомление для ${notificationKey} уже было отправлено ${Math.round(timeSinceLastNotification / 1000)} секунд назад. Пропускаем.`)
+      // console.log(`⏸️ NotificationManager: Уведомление для ${notificationKey} уже было отправлено ${Math.round(timeSinceLastNotification / 1000)} секунд назад. Пропускаем.`)
       return {
         success: true,
         message: 'Уведомление уже было отправлено недавно',
@@ -141,7 +141,7 @@ export async function sendNotification(
     })
     
     if (!order) {
-      console.log(`❌ NotificationManager: Заказ ${orderId.slice(-8)} не найден`)
+      // console.log(`❌ NotificationManager: Заказ ${orderId.slice(-8)} не найден`)
       return {
         success: false,
         message: 'Заказ не найден',
@@ -153,7 +153,7 @@ export async function sendNotification(
     
     // Проверяем статус заказа для NEW_ORDER уведомлений
     if (type === 'NEW_ORDER' && order.status !== 'COURIER_WAIT') {
-      console.log(`⚠️ NotificationManager: Заказ ${orderId.slice(-8)} не имеет статус COURIER_WAIT: ${order.status}`)
+      // console.log(`⚠️ NotificationManager: Заказ ${orderId.slice(-8)} не имеет статус COURIER_WAIT: ${order.status}`)
       return {
         success: false,
         message: 'Заказ не имеет статус COURIER_WAIT',
@@ -179,9 +179,9 @@ export async function sendNotification(
       }
       
       telegramSuccess = true
-      console.log(`✅ NotificationManager: ${telegramMessage} для заказа ${orderId.slice(-8)}`)
+      // console.log(`✅ NotificationManager: ${telegramMessage} для заказа ${orderId.slice(-8)}`)
     } catch (telegramError) {
-      console.error(`❌ NotificationManager: Ошибка отправки Telegram уведомления для заказа ${orderId.slice(-8)}:`, telegramError)
+      // console.error(`❌ NotificationManager: Ошибка отправки Telegram уведомления для заказа ${orderId.slice(-8)}:`, telegramError)
       telegramMessage = 'Ошибка отправки Telegram уведомления'
     }
     
@@ -198,7 +198,7 @@ export async function sendNotification(
     }
     
   } catch (error) {
-    console.error(`❌ NotificationManager: Ошибка обработки уведомления для заказа ${orderId.slice(-8)}:`, error)
+    // console.error(`❌ NotificationManager: Ошибка обработки уведомления для заказа ${orderId.slice(-8)}:`, error)
     return {
       success: false,
       message: 'Ошибка при обработке уведомления',
@@ -214,7 +214,7 @@ export async function sendBulkNotifications(
   request: NextRequest,
   notifications: NotificationRequest[]
 ): Promise<NotificationResult[]> {
-  console.log(`📨 NotificationManager: Обработка ${notifications.length} уведомлений`)
+    // console.log(`📨 NotificationManager: Обработка ${notifications.length} уведомлений`)
   
   const results: NotificationResult[] = []
   
@@ -229,7 +229,7 @@ export async function sendBulkNotifications(
   const successCount = results.filter(r => r.success).length
   const duplicateCount = results.filter(r => r.duplicate).length
   
-  console.log(`📊 NotificationManager: Результаты массовой отправки - Успешно: ${successCount}, Дубликаты: ${duplicateCount}, Ошибок: ${results.length - successCount}`)
+  // console.log(`📊 NotificationManager: Результаты массовой отправки - Успешно: ${successCount}, Дубликаты: ${duplicateCount}, Ошибок: ${results.length - successCount}`)
   
   return results
 }
@@ -250,5 +250,5 @@ export function getCacheStats(): { size: number; entries: Array<{ key: string; t
 // Функция для очистки кэша
 export function clearCache(): void {
   notificationCache.clear()
-  console.log('🧹 NotificationManager: Кэш очищен')
+  // console.log('🧹 NotificationManager: Кэш очищен')
 }

@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import TokenChecker from '@/components/TokenChecker'
 
 export default function CourierLoginPage() {
   const [phoneNumber, setPhoneNumber] = useState('')
@@ -28,14 +29,51 @@ export default function CourierLoginPage() {
       const data = await response.json()
 
       if (data.success) {
-        console.log('Авторизация успешна, перенаправление...')
+        // console.log('Авторизация успешна, перенаправление...')
+        // console.log('Response data:', data)
         
         // Передаем информацию о наличии Telegram уведомлений через query параметр
         const hasTelegramNotifications = data.data?.hasTelegramNotifications
         const queryParam = hasTelegramNotifications === false ? '?noTelegram=true' : ''
         
-        // Используем роутер Next.js для перенаправления
-        router.push(`/courier/dashboard${queryParam}`)
+        // Определяем, является ли устройство мобильным
+        const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)
+        // console.log('Устройство мобильное:', isMobile)
+        
+        if (isMobile) {
+          // Для мобильных устройств используем более надежный способ
+          // console.log('Мобильное устройство - используем специальное перенаправление')
+          
+          // Сохраняем токен в localStorage как fallback для мобильных устройств
+          try {
+            localStorage.setItem('auth-token-backup', data.data?.user?.id || '')
+            // console.log('Токен сохранен в localStorage как backup')
+          } catch (e) {
+            // console.log('Не удалось сохранить в localStorage:', e)
+          }
+          
+          // Сначала пробуем через роутер
+          router.push(`/courier/dashboard${queryParam}`)
+          
+          // Если через 200мс не сработало, принудительно через window.location
+          setTimeout(() => {
+            // console.log('Принудительное перенаправление для мобильного устройства...')
+            window.location.replace(`/courier/dashboard${queryParam}`)
+          }, 200)
+          
+          // Последняя попытка через window.location.href
+          setTimeout(() => {
+            // console.log('Последняя попытка перенаправления...')
+            window.location.href = `/courier/dashboard${queryParam}`
+          }, 1000)
+        } else {
+          // Для десктопа используем стандартный способ
+          // console.log('Десктопное устройство - стандартное перенаправление')
+          setTimeout(() => {
+            // console.log('Перенаправление на dashboard...')
+            window.location.href = `/courier/dashboard${queryParam}`
+          }, 100)
+        }
       } else {
         setError(data.error || 'Ошибка входа')
       }
@@ -48,6 +86,7 @@ export default function CourierLoginPage() {
 
   return (
     <div className="min-h-screen flex flex-col relative overflow-hidden" style={{ backgroundColor: '#1a1f2e' }}>
+      <TokenChecker />
       {/* Декоративные элементы фона */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         <div className="absolute -top-1/2 -right-1/2 w-[800px] h-[800px] bg-white/5 rounded-full blur-3xl"></div>

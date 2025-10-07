@@ -17,26 +17,26 @@ export async function initializeServer() {
 
   initializationPromise = (async () => {
     try {
-      console.log('🚀 Инициализация сервера...')
+      // console.log('🚀 Инициализация сервера...')
       
       // Динамический импорт для совместимости с Turbopack
       const { startTelegramPolling, isTelegramPollingActive } = await import('./telegram-polling')
       
       // Проверяем, не запущен ли уже бот
       if (isTelegramPollingActive()) {
-        console.log('ℹ️ Telegram бот уже активен, пропускаем запуск')
+        // console.log('ℹ️ Telegram бот уже активен, пропускаем запуск')
         isServerInitialized = true
         return
       }
       
       // Запускаем Telegram бота при старте сервера
-      console.log('📱 Запуск Telegram бота...')
+      // console.log('📱 Запуск Telegram бота...')
       await startTelegramPolling()
       
       isServerInitialized = true
-      console.log('✅ Сервер успешно инициализирован')
+      // console.log('✅ Сервер успешно инициализирован')
     } catch (error) {
-      console.error('❌ Ошибка инициализации сервера:', error)
+      // console.error('❌ Ошибка инициализации сервера:', error)
       isServerInitialized = true // Помечаем как инициализированный, чтобы не повторять
     }
   })()
@@ -47,5 +47,5 @@ export async function initializeServer() {
 // Автоматически вызываем инициализацию при импорте модуля
 if (typeof window === 'undefined') {
   // Только на сервере
-  initializeServer().catch(console.error)
+  initializeServer().catch(() => {})
 }

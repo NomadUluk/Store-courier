@@ -90,8 +90,8 @@ export function CustomDropdown({
                 onClick={() => handleOptionClick(option.value)}
                 className={`w-full text-left px-3 py-2 text-sm transition-colors duration-200 ${
                   isMobile 
-                    ? `hover:bg-gray-600 ${option.value === value ? 'bg-blue-600/30 text-blue-300' : ''}`
-                    : `hover:bg-gray-100 dark:hover:bg-gray-700 ${option.value === value ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400' : ''}`
+                    ? `hover:bg-gray-600 ${option.value === value ? 'bg-blue-600/30 text-blue-300' : 'text-gray-300'}`
+                    : `hover:bg-gray-100 dark:hover:bg-gray-700 ${option.value === value ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400' : 'text-gray-700 dark:text-gray-300'}`
                 }`}
                 style={{
                   color: option.value === value ? 'var(--primary)' : 'var(--foreground)'

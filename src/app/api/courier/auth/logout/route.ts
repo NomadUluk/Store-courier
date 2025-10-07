@@ -7,8 +7,9 @@ export async function POST() {
     message: 'Успешный выход из системы'
   })
 
-  // Удаляем cookie с токеном
+  // Удаляем все cookie с токенами
   response.cookies.delete('auth-token')
+  response.cookies.delete('auth-token-mobile')
 
   return response
 }

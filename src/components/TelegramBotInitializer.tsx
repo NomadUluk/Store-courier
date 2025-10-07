@@ -14,9 +14,9 @@ export default function TelegramBotInitializer() {
         if (response.ok) {
           const data = await response.json()
           if (data.data?.isActive) {
-            console.log('✅ Telegram бот активен')
+            // console.log('✅ Telegram бот активен')
           } else {
-            console.log('ℹ️ Telegram бот не активен (запускается автоматически при старте сервера)')
+            // console.log('ℹ️ Telegram бот не активен (запускается автоматически при старте сервера)')
           }
         }
       } catch (error) {

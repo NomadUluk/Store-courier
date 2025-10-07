@@ -116,10 +116,10 @@ export async function PATCH(request: NextRequest, context: RouteParams) {
       
       if (notificationRequest) {
         const notificationResult = await sendNotification(request, notificationRequest)
-        console.log(`📨 Статус заказа ${params.orderId.slice(-8)}: ${notificationResult.message}`)
+        // console.log(`📨 Статус заказа ${params.orderId.slice(-8)}: ${notificationResult.message}`)
       }
     } catch (error) {
-      console.error('Ошибка отправки Telegram уведомления:', error)
+      // console.error('Ошибка отправки Telegram уведомления:', error)
       // Не прерываем выполнение, если уведомление не отправилось
     }
 
@@ -129,7 +129,7 @@ export async function PATCH(request: NextRequest, context: RouteParams) {
       message: `Статус заказа обновлен на "${getStatusLabel(status)}"`
     })
   } catch (error) {
-    console.error('Update order status error:', error)
+    // console.error('Update order status error:', error)
     return NextResponse.json<ApiResponse>({
       success: false,
       error: 'Ошибка при обновлении статуса заказа'

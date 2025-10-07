@@ -154,8 +154,13 @@ function CourierLayoutContent({
               <button
                 onClick={async () => {
                   try {
-                    // Сначала очищаем токен на клиенте
+                    // Очищаем все токены на клиенте
                     document.cookie = 'auth-token=; Path=/; Expires=Thu, 01 Jan 1970 00:00:01 GMT;'
+                    document.cookie = 'auth-token-mobile=; Path=/; Expires=Thu, 01 Jan 1970 00:00:01 GMT;'
+                    
+                    // Очищаем localStorage
+                    localStorage.removeItem('auth-token')
+                    localStorage.removeItem('auth-token-mobile')
                     
                     // Затем отправляем запрос на сервер
                     await fetch('/api/courier/auth/logout', { method: 'POST' })
@@ -163,7 +168,7 @@ function CourierLayoutContent({
                     // Перенаправляем на страницу логина
                     window.location.href = '/courier/login'
                   } catch (error) {
-                    console.error('Ошибка при выходе:', error)
+                    // console.error('Ошибка при выходе:', error)
                     // В любом случае перенаправляем на логин
                     window.location.href = '/courier/login'
                   }

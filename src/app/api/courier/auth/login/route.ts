@@ -26,7 +26,7 @@ export async function POST(request: NextRequest) {
 
     // Проверяем наличие COURIER_CHAT_ID для Telegram уведомлений
     const hasTelegramChatId = await getCourierChatId(user.id)
-    console.log(`Курьер ${user.fullname} (${user.id}): Telegram Chat ID ${hasTelegramChatId ? 'найден' : 'не найден'}`)
+    // console.log(`Курьер ${user.fullname} (${user.id}): Telegram Chat ID ${hasTelegramChatId ? 'найден' : 'не найден'}`)
 
     const token = createToken({
       id: user.id,
@@ -48,14 +48,45 @@ export async function POST(request: NextRequest) {
       message: 'Успешная авторизация'
     })
 
-    // Устанавливаем cookie с токеном
+    // Определяем, является ли запрос с мобильного устройства
+    const userAgent = request.headers.get('user-agent') || ''
+    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(userAgent)
+    const isProduction = process.env.NODE_ENV === 'production'
+    const isHttps = request.url.startsWith('https://')
+    
+    // Для мобильных устройств в production с HTTPS используем 'none', иначе 'lax'
+    const sameSitePolicy = (isProduction && isMobile && isHttps) ? 'none' : 'lax'
+    const secureCookie = isProduction && isHttps
+    
+    // Устанавливаем cookie с токеном с учетом мобильных устройств
     response.cookies.set('auth-token', token, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
+      secure: secureCookie,
+      sameSite: sameSitePolicy,
       maxAge: 7 * 24 * 60 * 60, // 7 дней
       path: '/' // Явно указываем путь
     })
+
+    // Дополнительный cookie для мобильных устройств с более мягкими настройками
+    if (isMobile) {
+      response.cookies.set('auth-token-mobile', token, {
+        httpOnly: false, // Не httpOnly для мобильных устройств
+        secure: false, // Не secure для мобильных устройств
+        sameSite: 'lax',
+        maxAge: 7 * 24 * 60 * 60, // 7 дней
+        path: '/'
+      })
+      // console.log('Дополнительный мобильный cookie установлен')
+    }
+
+    // console.log('Login successful for courier:', user.fullname)
+    // console.log('Token created:', token.substring(0, 20) + '...')
+    // console.log('Cookie set with path: /')
+    // console.log('Mobile device:', isMobile)
+    // console.log('Production mode:', isProduction)
+    // console.log('HTTPS:', isHttps)
+    // console.log('SameSite policy:', sameSitePolicy)
+    // console.log('Secure cookie:', secureCookie)
 
     return response
   } catch (error) {
