@@ -130,6 +130,14 @@ const getMonthRange = (): string => {
   return `${formatDate(firstDay)}-${formatDate(lastDay)}`
 }
 
+const getYearRange = (): string => {
+  const today = new Date()
+  const firstDay = new Date(today.getFullYear(), 0, 1)
+  const lastDay = new Date(today.getFullYear(), 11, 31)
+  
+  return `${formatDate(firstDay)}-${formatDate(lastDay)}`
+}
+
 // Компонент для работы с searchParams
 function CourierDashboardContent() {
   logger.log('CourierDashboard: Компонент загружается')
@@ -1519,6 +1527,8 @@ function CourierDashboardContent() {
                         {dateFilter === 'today' ? `${t('today')} (${getTodayRange()})` : 
                          dateFilter === 'yesterday' ? `${t('yesterday')} (${getYesterdayRange()})` : 
                          dateFilter === 'week' ? `${t('thisWeek')} (${getWeekRange()})` : 
+                         dateFilter === 'month' ? `${t('thisMonth')} (${getMonthRange()})` :
+                         dateFilter === 'year' ? `${t('thisYear')} (${getYearRange()})` :
                          `${t('thisMonth')} (${getMonthRange()})`}
                       </span>
                     )}
